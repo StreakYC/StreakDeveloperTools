@@ -1,0 +1,15 @@
+{
+  "name": "Streak Developer Tools",
+  "version": "0.1",
+  "manifest_version": 2,
+  "description": "Development tools used internally at Streak.",
+  "icons": { "16": "resources/icon.png",
+           "48": "resources/icon.png",
+          "128": "resources/icon.png" },
+  "content_scripts": [
+    {
+      "matches": ["http://bigquery.cloud.google.com/*", "https://bigquery.cloud.google.com/*"],
+      "js": ["js/jquery.js", "js/devtools.js"]
+    }
+  ]
+}
