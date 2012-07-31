@@ -3,7 +3,7 @@ Streak Developer Tools
 
 The Streak Developer Tools (SDT) is a chrome extension that currently adds functionality to BigQuery (see features below) and in the future will add other tools used internally at [Streak.com](http://www.streak.com). 
 
-If you just want the extension - simply download from the Chrome Web Store, you'll also get automatic updates. 
+If you just want the extension - simply download from the [Chrome Web Store](https://chrome.google.com/webstore/detail/lfmljmpmipdibdhbmmaadmhpaldcihgd), you'll also get automatic updates. 
 <br/>
 * * * 
 BigQuery Tools
