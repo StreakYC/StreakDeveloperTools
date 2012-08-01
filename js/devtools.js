@@ -303,7 +303,7 @@ function addRowToSavedQueriesSidebar(title) {
 	q.find(".queryName").html(title);
 	sidebar.find(".queryContainer").append(q);
 	q.click(function(e) {
-		runQuery(savedQueries[title]);
+		fillInQuery(savedQueries[title]);
 	});
 	q.find(".tables-dataset-menu").click(function(e) {
 		delete savedQueries[title];
