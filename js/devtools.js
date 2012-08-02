@@ -253,7 +253,9 @@ function loadSavedQueries() {
 	if (retrievedObject == null) {
 		savedQueries = {};
 	}
-	savedQueries = JSON.parse(retrievedObject);
+	else {
+		savedQueries = JSON.parse(retrievedObject);
+	}
 };
 
 function storeSavedQueries(queries) {
