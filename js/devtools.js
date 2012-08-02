@@ -251,7 +251,7 @@ function fillInQuery(query) {
 function loadSavedQueries() {
 	var retrievedObject = localStorage.getItem('savedBigQueries');
 	if (retrievedObject == null) {
-		return {};
+		savedQueries = {};
 	}
 	savedQueries = JSON.parse(retrievedObject);
 };
