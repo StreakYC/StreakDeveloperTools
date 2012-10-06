@@ -132,7 +132,7 @@ $(document).ready(function() {
 			}
 			if (hidden) {
 				rowNum.parent().find(".records-cell").each(function(index) {
-					$(this).html("<pre>" + $(this).html() + "</pre>");
+					$(this).html("<pre style=\"overflow:auto\">" + $(this).html() + "</pre>");
 				});	
 			}
 			else {
@@ -243,7 +243,8 @@ function runQuery(query) {
 
 function fillInQuery(query) {
 	clickButton($("#query-history-button"));
-	$(".queries-table-sql").last().html(query);
+	$(".queries-table-row").last().find(".queries-table-content").html(query);
+	$(".queries-table-row").last().find(".queries-table-content").attr("data-sql", query);
 	clickButton($(".queries-table-row").last());
 }
 
