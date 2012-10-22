@@ -1,6 +1,8 @@
 var savedQueries = null;
 var sidebar = null;
 var saveButton = null;
+var showGraphButton = null;
+var hideGraphButton = null;
 var datasetQueries = new Object();
 var lastDatasetSelected = '';
 
@@ -8,7 +10,11 @@ $(document).ready(function() {
 	loadSavedQueries();
 	createSidebar();
 	createSaveQueryButton();
-	
+	createShowGraphButton();
+	createHideGraphButton();
+
+	hideGraphButton.hide();
+
 	for (key in savedQueries) {
 		addRowToSavedQueriesSidebar(key);
 	}
@@ -40,6 +46,36 @@ $(document).ready(function() {
 			}
 		}
 	});
+
+	showGraphButton.click(function(e){
+		var data = [];
+		var temp = [];
+
+		clickButton($('#to-first'));
+		temp = getResultsOffPage(true);
+		data = data.concat(temp);
+
+		var done = isOnLastResultPage();
+		while (!done) {
+			clickButton($('#to-next'));
+			temp = getResultsOffPage(false);
+			data = data.concat(temp);			
+			done = isOnLastResultPage();
+		} 
+		clickButton($('#to-first'));
+		showAllResults(data);
+		showGraphButton.hide();
+		hideGraphButton.show();
+	});
+
+	hideGraphButton.click(function(e){
+		hideAllResults();
+		showGraphButton.show();
+		hideGraphButton.hide();
+	});
+
+
+
 	
 	var t = setInterval(function() {
 		
@@ -55,6 +91,17 @@ $(document).ready(function() {
 		if (runQueryButton.size() != 0) {
 			if (runQueryButton.parent().find('#save-query').size() == 0) {
 				saveButton.insertAfter(runQueryButton);
+			}
+		}
+
+		// add show graph button
+		var downloadButton = $('#download');
+		if (downloadButton.size() != 0) {
+			if (downloadButton.parent().find('#showGraphButton').size() == 0) {
+				showGraphButton.insertBefore(downloadButton);
+			}
+			if (downloadButton.parent().find('#hideGraphButton').size() == 0) {
+				hideGraphButton.insertBefore(downloadButton);
 			}
 		}
 		
@@ -145,6 +192,36 @@ $(document).ready(function() {
 	},1000);	
 });
 
+function showAllResults(data) {
+	var html = "<table id=\"allresults\" class=\"records-table\"><tbody>";
+	html += "<tr>";
+	for (var i = 0; i < data[0].length; i++) {
+		html+= "<td class=\"records-header\">" + data[0][i] + "</td>";
+	}
+	html += "</tr>";
+
+	for (var i = 1; i < data.length; i++) {
+		html+= "<tr class=\"records-row\">";
+		for (var j = 0; j < data[i].length; j++) {
+			html += "<td class=\"records-cell\">" + data[i][j] + "</td>";
+		}
+		html+= "</tr>";
+	}
+	html+="</tbody></table>";
+
+
+	$('#result-table').before(html);
+	$('#result-table').hide();
+	$('#records-nav').hide();
+
+}
+
+function hideAllResults() {
+	$('#result-table').show();
+	$('#records-nav').show();
+	$('#allresults').remove();
+}
+
 function addAddAllRow() {
 	var table = $('.schema-table');
 	if (table.length > 0 && !$(table[0]).hasClass('functionalityAdded')) {
@@ -171,7 +248,7 @@ function addAddAllRow() {
 		});
 		tableBody.append(clone);
 	}
-}
+};
 
 function addQueryDatasetMenuItem() {
 	var menu = $($('.goog-menu-vertical')[1]);
@@ -196,7 +273,7 @@ function addQueryDatasetMenuItem() {
 		});
 		menu.append(newElement);
 	}
-}
+};
 
 function refreshDatasetQueries() {
 	var eles = $('#tables').children();
@@ -222,7 +299,7 @@ function refreshDatasetQueries() {
 			}
 		}
 	}
-}
+};
 
 function attachEventHandlerToDataSetRow(dataSetRow) {
 	var menu = dataSetRow.find('.tables-dataset-menu');
@@ -233,20 +310,20 @@ function attachEventHandlerToDataSetRow(dataSetRow) {
 			console.log(lastDatasetSelected);
 		});
 	}
-}
+};
 
 
 function runQuery(query) {
 	fillInQuery(query);
 	clickButton($("#query-run"));
-}
+};
 
 function fillInQuery(query) {
 	clickButton($("#query-history-button"));
 	$(".queries-table-row").last().find(".queries-table-content").html(query);
 	$(".queries-table-row").last().find(".queries-table-content").attr("data-sql", query);
 	clickButton($(".queries-table-row").last());
-}
+};
 
 
 function loadSavedQueries() {
@@ -276,7 +353,7 @@ function getQueryBoxContents() {
 	retVal = retVal.trim();
 	
 	return retVal;
-}
+};
 
 function normalizeTitle(title) {
 	title = title.trim();
@@ -284,7 +361,7 @@ function normalizeTitle(title) {
 		title = title.substring(0, title.length-1);
 	}
 	return title;
-}
+};
 
 function showSaveQueryInstructions() {
 	alert('Type your query into the query box above and make sure to have one comment line (starts with --) with the name you want to save the query with.');
@@ -295,6 +372,28 @@ function createSavedQueryRow() {
 
 function createSaveQueryButton() {
 	saveButton = $("<div id=\"save-query\" class=\"jfk-button jfk-button-primary goog-inline-block\" role=\"button\" style=\"-webkit-user-select: none;\" aria-disabled=\"false\" aria-label=\"foo\" data-tooltip=\"Enter a query above with a SQL comment of the name you wish to save.\" data-tooltip-align=\"b,c\" data-tooltip-delay=\"1000\" tabindex=\"0\">Save Query</div>");
+};
+
+function createShowGraphButton() {
+	showGraphButton = $("<div id=\"showGraphButton\" class=\"goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right\" role=\"button\" style=\"-webkit-user-select: none;\" tabindex=\"0\">Show All Results</div>");
+	showGraphButton.hover(function() {
+		showGraphButton.addClass('jfk-button-hover');
+	},
+	function() {
+		showGraphButton.removeClass('jfk-button-hover');
+	}
+	);
+};
+
+function createHideGraphButton() {
+	hideGraphButton = $("<div id=\"hideGraphButton\" class=\"goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right\" role=\"button\" style=\"-webkit-user-select: none;\" tabindex=\"0\">Hide All Results</div>");
+	hideGraphButton.hover(function() {
+		hideGraphButton.addClass('jfk-button-hover');
+	},
+	function() {
+		hideGraphButton.removeClass('jfk-button-hover');
+	}
+	);
 };
 
 function createSidebar() {
@@ -313,7 +412,45 @@ function addRowToSavedQueriesSidebar(title) {
 		storeSavedQueries(savedQueries);
 		q.remove();
 	});
-}
+};
+
+function isOnLastResultPage() {
+	var navStr = $('.page-number').text();
+	navStr = navStr.substring(navStr.indexOf('-')+1);
+	navStr = navStr.split(' ');
+	if (navStr[0] == navStr[2]) {
+		return true;
+	}
+
+	return false;
+};
+
+function getResultsOffPage(includeHeader) {
+	var retVal = [];
+	var offset = 0;
+	if (includeHeader) {
+		var headerCells = $('.records-header');
+		var headerVals = [];
+		for (var i = 0; i < headerCells.length; i++) {
+			headerVals.push($(headerCells[i]).text());
+		}
+		retVal[0] = headerVals;
+		offset = 1;
+	}
+
+
+
+	var rows = $('.records-row');
+	for (var i = 0; i < rows.length; i++) {
+		var rowCells = $(rows[i]).children();
+		var row = [];
+		for (var j = 0; j < rowCells.length; j++) {
+			row.push($(rowCells[j]).text());
+		}
+		retVal[i + offset] = row;
+	}
+	return retVal;
+};
 
 function clickButton(sb) {
 	var pos = sb.offset();
