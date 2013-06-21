@@ -1,52 +1,49 @@
-var savedQueries = null;
 var sidebar = null;
-var saveButton = null;
+var runExpansionButton = null;
 var showGraphButton = null;
 var hideGraphButton = null;
 var datasetQueries = new Object();
 var lastDatasetSelected = '';
 
 $(document).ready(function() {
-	loadSavedQueries();
-	createSidebar();
-	createSaveQueryButton();
 	createShowGraphButton();
 	createHideGraphButton();
-
+	createRunExpansionButton();
 	hideGraphButton.hide();
 
-	for (key in savedQueries) {
-		addRowToSavedQueriesSidebar(key);
-	}
 	
-	saveButton.click(function(e) {
-		var query = getQueryBoxContents(); 
-		if (!query) {
-			showSaveQueryInstructions();
-			return;
+	runExpansionButton.click(function(e) {
+		var dataSetEles = $(".tables-dataset-id-text");
+		var datasetNames = [];
+		for (var i = 0; i < dataSetEles.length; i++) {
+			datasetNames.push($(dataSetEles[i]).text());
 		}
-		var lines = query.split('\n');
-		var title = '';
-		for (var i = 0; i < lines.length; i++) {
-			if (lines[i].substring(0,2) == '--') {
-				title = lines[i].substring(2);
+		
+		var spans = $('.CodeMirror-lines').find('span');
+		var pres = $('.CodeMirror-lines > :first-child > :last-child pre');
+		var queryStr = '';
+		for (var i = 0; i < pres.length; i++) {
+			var ele = $(pres[i]);
+			var text = ele.text();
+			for (var j = 0; j < datasetNames.length; j++) {
+				var dataset = datasetNames[j];
+				if (text.indexOf(dataset + ':first') > -1) {
+					expandDataset(j);
+					var tableName = $('#tables').find('[id*=' + dataset + '][id*=tableId]').first().find('.tables-table-id-text').text();
+					text = text.replace(dataset + ':first', dataset + '.' + tablename);
+				}
+				else if (text.indexOf(dataset + ':last') > -1) {
+					expandDataset(j);
+					var tablename = $('#tables').find('[id*=' + dataset + '][id*=tableId]').last().find('.tables-table-id-text').text();
+					text = text.replace(dataset + ':last', dataset + '.' + tablename);
+				}
 			}
+			queryStr += text + "\n"
 		}
-		title = normalizeTitle(title);
-		if (!title) {
-			showSaveQueryInstructions();
-		}
-		else {
-			var numBefore = Object.keys(savedQueries).length;
-			savedQueries[title] = query;
-			var numAfter = Object.keys(savedQueries).length;
-			storeSavedQueries(savedQueries);
-			if (numAfter > numBefore) {
-				addRowToSavedQueriesSidebar(title);
-			}
-		}
+		runQuery(queryStr);
 	});
 
+	
 	showGraphButton.click(function(e){
 		var data = [];
 		var temp = [];
@@ -73,27 +70,18 @@ $(document).ready(function() {
 		showGraphButton.show();
 		hideGraphButton.hide();
 	});
-
-
-
 	
+	
+
 	var t = setInterval(function() {
-		
-		// add left sidebar for saved queries
-		var size = $(".sidebar").size();
-		if (size == 0) {
-			$("#project-display").append(sidebar);
-		}
-		$(".records").removeAttr("style");
-		
-		// add save query button
+		// add run expansion button
 		var runQueryButton = $('#query-run');
 		if (runQueryButton.size() != 0) {
-			if (runQueryButton.parent().find('#save-query').size() == 0) {
-				saveButton.insertAfter(runQueryButton);
+			if (runQueryButton.parent().find('#expand-query').size() == 0) {
+				runExpansionButton.insertAfter(runQueryButton);
 			}
 		}
-
+		
 		// add show graph button
 		var downloadButton = $('#download');
 		if (downloadButton.size() != 0) {
@@ -191,6 +179,12 @@ $(document).ready(function() {
 
 	},1000);	
 });
+
+function expandDataset(i) {
+	if ($('.tables-dataset-icon')[i].className.indexOf('collapsed') > -1) {
+		clickButton($($('.tables-dataset-icon')[i]));
+	}
+}
 
 function showAllResults(data) {
 	var html = "<table id=\"allresults\" class=\"records-table\"><tbody>";
@@ -325,21 +319,6 @@ function fillInQuery(query) {
 	clickButton($(".queries-table-row").last());
 };
 
-
-function loadSavedQueries() {
-	var retrievedObject = localStorage.getItem('savedBigQueries');
-	if (retrievedObject == null) {
-		savedQueries = {};
-	}
-	else {
-		savedQueries = JSON.parse(retrievedObject);
-	}
-};
-
-function storeSavedQueries(queries) {
-	localStorage.setItem('savedBigQueries', JSON.stringify(queries));
-};
-
 function getQueryBoxContents() {
 	var preTags = $(".CodeMirror-lines").children().first().children().last().children();
 	if (preTags.size() == 0) {
@@ -361,17 +340,6 @@ function normalizeTitle(title) {
 		title = title.substring(0, title.length-1);
 	}
 	return title;
-};
-
-function showSaveQueryInstructions() {
-	alert('Type your query into the query box above and make sure to have one comment line (starts with --) with the name you want to save the query with.');
-};
-function createSavedQueryRow() {
-	return $("<div class=\"tables-row tables-dataset-row\"><div class=\"tables-dataset-id overflow-ellipsis\"><span class=\"tables-dataset-id-text queryName\"></span></div><div class=\"tables-menu tables-dataset-menu\"></div></div>");
-};
-
-function createSaveQueryButton() {
-	saveButton = $("<div id=\"save-query\" class=\"jfk-button jfk-button-primary goog-inline-block\" role=\"button\" style=\"-webkit-user-select: none;\" aria-disabled=\"false\" aria-label=\"foo\" data-tooltip=\"Enter a query above with a SQL comment of the name you wish to save.\" data-tooltip-align=\"b,c\" data-tooltip-delay=\"1000\" tabindex=\"0\">Save Query</div>");
 };
 
 function createShowGraphButton() {
@@ -396,23 +364,10 @@ function createHideGraphButton() {
 	);
 };
 
-function createSidebar() {
-	sidebar = $("<div><div id=\"tables-header\"><div class=\"project-name sidebar overflow-ellipsis\">Saved Queries</div></div><div id=\"tables\" class=\"queryContainer\"></div></div>");
+function createRunExpansionButton() {
+	runExpansionButton = $("<div id=\"expand-query\" class=\"jfk-button jfk-button-primary goog-inline-block\" role=\"button\" style=\"-webkit-user-select: none;\" aria-disabled=\"false\" aria-label=\"foo\" data-tooltip=\"This will expand dataset:first/last toi the first or last table in the specified dataset.\" data-tooltip-align=\"b,c\" data-tooltip-delay=\"1000\" tabindex=\"0\">Run With Expansion</div>");
 };
 
-function addRowToSavedQueriesSidebar(title) {
-	var q = createSavedQueryRow();
-	q.find(".queryName").html(title);
-	sidebar.find(".queryContainer").append(q);
-	q.click(function(e) {
-		fillInQuery(savedQueries[title]);
-	});
-	q.find(".tables-dataset-menu").click(function(e) {
-		delete savedQueries[title];
-		storeSavedQueries(savedQueries);
-		q.remove();
-	});
-};
 
 function isOnLastResultPage() {
 	var navStr = $('.page-number').text();
