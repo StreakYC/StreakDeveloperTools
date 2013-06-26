@@ -136,6 +136,9 @@ $(document).ready(function() {
 	           });
 		}
 		
+		// make sure the page is scrollable
+		removeHeightFromRecords();
+		
 		// refresh dataset queries
 		refreshDatasetQueries();
 		
@@ -267,6 +270,10 @@ function addQueryDatasetMenuItem() {
 		});
 		menu.append(newElement);
 	}
+};
+
+function removeHeightFromRecords() {
+	$('.records').css('height', '');
 };
 
 function refreshDatasetQueries() {
