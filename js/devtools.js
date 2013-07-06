@@ -10,7 +10,6 @@ $(document).ready(function() {
 	createHideGraphButton();
 	createRunExpansionButton();
 	hideGraphButton.hide();
-
 	
 	runExpansionButton.click(function(e) {
 		var dataSetEles = $(".tables-dataset-id-text");
@@ -45,28 +44,25 @@ $(document).ready(function() {
 
 	
 	showGraphButton.click(function(e){
-		var data = [];
-		var temp = [];
+		 var data = getDataArrayFromResults();
 
-		clickButton($('#to-first'));
-		temp = getResultsOffPage(true);
-		data = data.concat(temp);
+        data = JSON.stringify(data);
+        data = encodeURIComponent(data);
 
-		var done = isOnLastResultPage();
-		while (!done) {
-			clickButton($('#to-next'));
-			temp = getResultsOffPage(false);
-			data = data.concat(temp);			
-			done = isOnLastResultPage();
-		} 
-		clickButton($('#to-first'));
-		showAllResults(data);
+        var uri = "chrome-extension://gfjiobnfppmlbdjhnljlmcclcncamghb/resources/chart.html?data=" + data;
+		var iframe = $('<iframe id="chart"></iframe>');
+		iframe.attr('src', uri);
+		iframe.css('width', '100%');
+		iframe.css('height', '300px')
+		$('#content-panel-main .content-header').parent().prepend(iframe)
+
 		showGraphButton.hide();
 		hideGraphButton.show();
 	});
 
 	hideGraphButton.click(function(e){
-		hideAllResults();
+		$('#chart').remove();
+
 		showGraphButton.show();
 		hideGraphButton.hide();
 	});
@@ -183,40 +179,49 @@ $(document).ready(function() {
 	},1000);	
 });
 
+function getDataArrayFromResults() {
+	var retVal = [];
+
+	var headerCells = $('#result-table .records-header:not(.records-filler):not(:first-child)');
+	var header = [];
+	for (var i = 0; i < headerCells.length; i++) {
+		header.push($(headerCells[i]).text());
+	}
+	retVal.push(header);
+
+	var rows = $('#result-table .records-row');
+	for (var i = 0; i < rows.length; i++) {
+		var row = $(rows[i]);
+		var cols = row.find('.records-cell-number');
+		var rowArray = [];
+		for (var j = 0; j < cols.length; j++) {
+			var col = $(cols[j]);
+			if (j == 0) {
+				rowArray.push(Date.parse(col.text()));	
+			}
+			else {
+				if (isNumeric(col.text())) {
+					rowArray.push(parseFloat(col.text()));
+				}
+				else {
+					rowArray.push(0);
+				}
+				
+			}
+		}
+		retVal.push(rowArray);
+	}
+	return retVal;
+}
+
+function isNumeric(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
 function expandDataset(i) {
 	if ($('.tables-dataset-icon')[i].className.indexOf('collapsed') > -1) {
 		clickButton($($('.tables-dataset-icon')[i]));
 	}
-}
-
-function showAllResults(data) {
-	var html = "<table id=\"allresults\" class=\"records-table\"><tbody>";
-	html += "<tr>";
-	for (var i = 0; i < data[0].length; i++) {
-		html+= "<td class=\"records-header\">" + data[0][i] + "</td>";
-	}
-	html += "</tr>";
-
-	for (var i = 1; i < data.length; i++) {
-		html+= "<tr class=\"records-row\">";
-		for (var j = 0; j < data[i].length; j++) {
-			html += "<td class=\"records-cell\">" + data[i][j] + "</td>";
-		}
-		html+= "</tr>";
-	}
-	html+="</tbody></table>";
-
-
-	$('#result-table').before(html);
-	$('#result-table').hide();
-	$('#records-nav').hide();
-
-}
-
-function hideAllResults() {
-	$('#result-table').show();
-	$('#records-nav').show();
-	$('#allresults').remove();
 }
 
 function addAddAllRow() {
@@ -350,7 +355,7 @@ function normalizeTitle(title) {
 };
 
 function createShowGraphButton() {
-	showGraphButton = $("<div id=\"showGraphButton\" class=\"goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right\" role=\"button\" style=\"-webkit-user-select: none;\" tabindex=\"0\">Show All Results</div>");
+	showGraphButton = $("<div id=\"showGraphButton\" class=\"goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right\" role=\"button\" style=\"-webkit-user-select: none;\" tabindex=\"0\">Show Graph</div>");
 	showGraphButton.hover(function() {
 		showGraphButton.addClass('jfk-button-hover');
 	},
@@ -361,7 +366,7 @@ function createShowGraphButton() {
 };
 
 function createHideGraphButton() {
-	hideGraphButton = $("<div id=\"hideGraphButton\" class=\"goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right\" role=\"button\" style=\"-webkit-user-select: none;\" tabindex=\"0\">Hide All Results</div>");
+	hideGraphButton = $("<div id=\"hideGraphButton\" class=\"goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right\" role=\"button\" style=\"-webkit-user-select: none;\" tabindex=\"0\">Hide Graph</div>");
 	hideGraphButton.hover(function() {
 		hideGraphButton.addClass('jfk-button-hover');
 	},

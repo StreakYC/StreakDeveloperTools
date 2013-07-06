@@ -11,5 +11,9 @@
       "matches": ["http://bigquery.cloud.google.com/*", "https://bigquery.cloud.google.com/*"],
       "js": ["js/jquery.js", "js/devtools.js"]
     }
-  ]
+  ],
+  "web_accessible_resources": [
+    "resources/chart.html"
+  ],
+  "content_security_policy": "script-src 'self' https://*.google.com 'unsafe-eval'; object-src 'self'"
 }
