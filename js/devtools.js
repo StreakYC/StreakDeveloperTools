@@ -49,7 +49,7 @@ $(document).ready(function() {
         data = JSON.stringify(data);
         data = encodeURIComponent(data);
 
-        var uri = "chrome-extension://gfjiobnfppmlbdjhnljlmcclcncamghb/resources/chart.html?data=" + data;
+        var uri = chrome.extension.getURL("resources/chart.html?data=" + data);
 		var iframe = $('<iframe id="chart"></iframe>');
 		iframe.attr('src', uri);
 		iframe.css('width', '100%');
