@@ -70,6 +70,14 @@ $(document).ready(function() {
 	
 
 	var t = setInterval(function() {
+		// check if results exist
+		if ($('#content-panel-main').height() != 15000) {
+			$('#content-panel-main').height(15000);
+			var evt = document.createEvent('UIEvents');
+			evt.initUIEvent('resize', true, false,window,0);
+			window.dispatchEvent(evt);
+		}
+
 		// add run expansion button
 		var runQueryButton = $('#query-run');
 		if (runQueryButton.size() != 0) {
