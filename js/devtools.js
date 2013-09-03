@@ -333,10 +333,14 @@ function runQuery(query) {
 };
 
 function fillInQuery(query) {
-	clickButton($("#query-history-button"));
-	$(".queries-table-row").last().find(".queries-table-content").html(query);
-	$(".queries-table-row").last().find(".queries-table-content").attr("data-sql", query);
-	clickButton($(".queries-table-row").last());
+	
+	// the following method no longer works, for now just show an alert so user can copy and paste
+//	clickButton($("#query-history-button"));
+//	$(".queries-table-row").last().find(".queries-table-content").html(query);
+//	$(".queries-table-row").last().find(".queries-table-content").attr("data-sql", query);
+//	clickButton($(".queries-table-row").last());
+	
+	alert(query);
 };
 
 function getQueryBoxContents() {
