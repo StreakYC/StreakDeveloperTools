@@ -1,5 +1,5 @@
 var sidebar = null;
-var runExpansionButton = null;
+var expandTemplateButton = null;
 var showGraphButton = null;
 var hideGraphButton = null;
 var datasetQueries = new Object();
@@ -8,43 +8,14 @@ var lastDatasetSelected = '';
 $(document).ready(function() {
 	createShowGraphButton();
 	createHideGraphButton();
-	createRunExpansionButton();
+	createTemplateExpansionButton();
 	hideGraphButton.hide();
 	
-	runExpansionButton.click(function(e) {
-		var dataSetEles = $(".tables-dataset-id-text");
-		var datasetNames = [];
-		for (var i = 0; i < dataSetEles.length; i++) {
-			datasetNames.push($(dataSetEles[i]).text());
-		}
-		
-		var spans = $('.CodeMirror-lines').find('span');
-		var pres = $('.CodeMirror-lines > :first-child > :last-child pre');
-		var queryStr = '';
-		for (var i = 0; i < pres.length; i++) {
-			var ele = $(pres[i]);
-			var text = ele.text();
-			for (var j = 0; j < datasetNames.length; j++) {
-				var dataset = datasetNames[j];
-				if (text.indexOf(dataset + ':first') > -1) {
-					expandDataset(j);
-					var tableName = $('#tables').find('[id*=' + dataset + '][id*=tableId]').first().find('.tables-table-id-text').text();
-					text = text.replace(dataset + ':first', dataset + '.' + tablename);
-				}
-				else if (text.indexOf(dataset + ':last') > -1) {
-					expandDataset(j);
-					var tablename = $('#tables').find('[id*=' + dataset + '][id*=tableId]').last().find('.tables-table-id-text').text();
-					text = text.replace(dataset + ':last', dataset + '.' + tablename);
-				}
-			}
-			queryStr += text + "\n"
-		}
-		runQuery(queryStr);
-	});
+	expandTemplateButton.click(expandTemplatesInQueryPressed);
 
 	
 	showGraphButton.click(function(e){
-		 var data = getDataArrayFromResults();
+		var data = getDataArrayFromResults();
 
         data = JSON.stringify(data);
         data = encodeURIComponent(data);
@@ -62,13 +33,10 @@ $(document).ready(function() {
 
 	hideGraphButton.click(function(e){
 		$('#chart').remove();
-
 		showGraphButton.show();
 		hideGraphButton.hide();
 	});
 	
-	
-
 	var t = setInterval(function() {
 		// check if results exist
 		if ($('#content-panel-main').height() != 15000) {
@@ -79,10 +47,10 @@ $(document).ready(function() {
 		}
 
 		// add run expansion button
-		var runQueryButton = $('#query-run');
-		if (runQueryButton.size() != 0) {
-			if (runQueryButton.parent().find('#expand-query').size() == 0) {
-				runExpansionButton.insertAfter(runQueryButton);
+		var saveQueryButton = $('#query-save');
+		if (saveQueryButton.size() != 0) {
+			if (saveQueryButton.parent().find('#expand-query').size() == 0) {
+				expandTemplateButton.insertBefore(saveQueryButton);
 			}
 		}
 		
@@ -187,6 +155,59 @@ $(document).ready(function() {
 	},1000);	
 });
 
+function getDatasetNames() {
+	var dataSetEles = $(".tables-dataset-id-text");
+	var datasetNames = [];
+	for (var i = 0; i < dataSetEles.length; i++) {
+		datasetNames.push($(dataSetEles[i]).text());
+	}
+	return datasetNames;
+}
+
+function expandTemplatesInQueryPressed(e) {
+	var query = getQueryBoxContents();
+
+	if (query.indexOf(':first') > -1 || query.indexOf(':last') > -1) {
+		query = replaceFirstLastTemplates(query);
+	}
+
+	if (query.indexOf('funnel:') > -1) {
+		query = replaceFunnelTemplates(query);
+	}
+
+	fillInQuery(query);
+}
+
+function replaceFunnelTemplates(query) {
+	return query + 'a';
+}
+
+function replaceFirstLastTemplates(query) {
+	var datasetNames = getDatasetNames();
+	for (var i = 0; i < datasetNames.length; i++) {
+		console.log(datasetNames[i]);
+	}
+}
+
+function readQueryBox() {
+	var presFromCode = $('.CodeMirror-lines div div').last().find('pre');
+	var retVal = '';
+	for (var i = 0; i < presFromCode.length; i++) {
+		retVal += $(presFromCode[i]).text() + '\n';
+	}
+	return retVal;
+}
+
+function getFirstTableInDataset(dataset) {
+	expandDataset(dataset);
+	return $('#tables').find('[id*=' + dataset + '][id*=tableId]').first().find('.tables-table-id-text').text();
+}
+
+function getLastTableInDataset(dataset) {
+	expandDataset(dataset);
+	return $('#tables').find('[id*=' + dataset + '][id*=tableId]').last().find('.tables-table-id-text').text();
+}
+
 function getDataArrayFromResults() {
 	var retVal = [];
 
@@ -226,9 +247,16 @@ function isNumeric(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
-function expandDataset(i) {
-	if ($('.tables-dataset-icon')[i].className.indexOf('collapsed') > -1) {
-		clickButton($($('.tables-dataset-icon')[i]));
+function expandDataset(dataset) {
+	var datasetRows = $('.tables-dataset-row');
+	for (var i = 0; i < datasetRows.length; i++) {
+		var row = $(datasetRows[i]);
+		var name = row.find('.tables-dataset-id-text').text();
+		if (name == dataset) {
+			if (row.find('.tables-dataset-icon')[0].className.indexOf('collapsed') > -1) {
+				clickButton(row.find('.tables-dataset-icon'));
+			}
+		}
 	}
 }
 
@@ -334,13 +362,24 @@ function runQuery(query) {
 
 function fillInQuery(query) {
 	
-	// the following method no longer works, for now just show an alert so user can copy and paste
-//	clickButton($("#query-history-button"));
-//	$(".queries-table-row").last().find(".queries-table-content").html(query);
-//	$(".queries-table-row").last().find(".queries-table-content").attr("data-sql", query);
-//	clickButton($(".queries-table-row").last());
-	
-	alert(query);
+	clickButton($("#query-history-button"));
+	var savedQueries = $('.queries-table-content');
+
+	if (savedQueries.length == 0) {
+		alert('You must have at least one saved query for this feature to work');
+	}
+	else {
+		var oldDataSql = savedQueries.last().attr('data-sql');
+		var oldDataId = savedQueries.last().attr('data-id');
+
+		savedQueries.last().attr('data-sql', query);
+		savedQueries.last().attr('data-id', oldDataId + 'A');
+
+		clickButton(savedQueries.last());
+
+		savedQueries.last().attr('data-sql', oldDataSql);
+		savedQueries.last().attr('data-id', oldDataId);		
+	}
 };
 
 function getQueryBoxContents() {
@@ -388,8 +427,8 @@ function createHideGraphButton() {
 	);
 };
 
-function createRunExpansionButton() {
-	runExpansionButton = $("<div id=\"expand-query\" class=\"jfk-button jfk-button-primary goog-inline-block\" role=\"button\" style=\"-webkit-user-select: none;\" aria-disabled=\"false\" aria-label=\"foo\" data-tooltip=\"This will expand dataset:first/last toi the first or last table in the specified dataset.\" data-tooltip-align=\"b,c\" data-tooltip-delay=\"1000\" tabindex=\"0\">Run With Expansion</div>");
+function createTemplateExpansionButton() {
+	expandTemplateButton = $("<div id=\"expand-query\" class=\"jfk-button jfk-button-standard goog-inline-block\" role=\"button\" style=\"-webkit-user-select: none;\" aria-disabled=\"false\" aria-label=\"foo\" data-tooltip=\"This will expand dataset:first/last toi the first or last table in the specified dataset.\" data-tooltip-align=\"b,c\" data-tooltip-delay=\"1000\" tabindex=\"0\">Expand Templates</div>");
 };
 
 
