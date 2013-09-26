@@ -183,10 +183,11 @@ function replaceFunnelTemplates(query) {
 }
 
 function replaceFirstLastTemplates(query) {
-	var datasetNames = getDatasetNames();
-	for (var i = 0; i < datasetNames.length; i++) {
-		console.log(datasetNames[i]);
-	}
+	// var datasetNames = getDatasetNames();
+	// for (var i = 0; i < datasetNames.length; i++) {
+	// 	console.log(datasetNames[i]);
+	// }
+	alert(':first and :last templates not implemented yet');
 }
 
 function readQueryBox() {
