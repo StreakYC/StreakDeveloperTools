@@ -489,7 +489,8 @@ function clickButton(sb) {
 ** Funnel query generation
 *************************************************/
 
-/** string - a comma-separated list of funnel,eventName1,eventName2, ...
+/** string - a comma-separated list of funnel,joinColumn,eventName1,eventName2, ...
+where joinColumn is likely userKey or sessionId
  */
 function funnelQueryFromString(string)
 {
