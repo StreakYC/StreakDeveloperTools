@@ -489,21 +489,23 @@ function clickButton(sb) {
 ** Funnel query generation
 *************************************************/
 
-/** string - a comma-separated list of funnel,joinColumn,eventName1,eventName2, ...
-where joinColumn is likely userKey or sessionId
+/** string - a comma-separated list of funnel,table,joinColumn,eventName1,eventName2, ...
+- table is likely events.dev or events.prod
+- joinColumn is likely userKey or sessionId
  */
 function funnelQueryFromString(string)
 {
 	var paramsArray = string.split(",");
-	var joinColumn = paramsArray[1];
+    var table = paramsArray[1];
+	var joinColumn = paramsArray[2];
 	var objectArray = [];
-	for (var i=2; i < paramsArray.length; i++) {
+	for (var i=3; i < paramsArray.length; i++) {
 		var object = {
 			name: paramsArray[i]
 		};
 		objectArray.push(object);
 	}
-	return funnelQuery(joinColumn, objectArray);
+	return funnelQuery(table, joinColumn, objectArray);
 }
 
 
@@ -557,9 +559,8 @@ FROM
 		ON s1.userKey1 = s2.userKey2) AS t1
 	ON s0.userKey0 = t1.userKey1) AS t0
 */
-var EVENT_TABLE = "[events.events_dev]";
 
-function funnelQuery(joinColumn,params)
+function funnelQuery(table, joinColumn, params)
 {
 	var query = "";
 	// SELECT count(timestamp0), count(timestamp1), count(timestamp2)
@@ -573,12 +574,12 @@ function funnelQuery(joinColumn,params)
 		}
 	}
 	query += "FROM\n";
-	query += funnelSubquery(joinColumn,0,params);
+	query += funnelSubquery(table, joinColumn, 0, params);
 	return query;
 		
 }
 
-function funnelSubquery(joinColumn,step,params) {
+function funnelSubquery(table, joinColumn, step, params) {
 	var query = "";
 	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
 	query += "(SELECT " + joinColumn + step;
@@ -587,17 +588,17 @@ function funnelSubquery(joinColumn,step,params) {
 	}
 	query += "\n";
 	query += indent(step+1) + "FROM\n";
-	query += filterTableSubquery(joinColumn, step, params);
+	query += filterTableSubquery(table, joinColumn, step, params);
 
 	query += indent(step+1) + "LEFT JOIN EACH\n";
 	var tableAlias;
 	if (step === params.length - 2) {
 		// base case
-		query += filterTableSubquery(joinColumn, step + 1, params);
+		query += filterTableSubquery(table, joinColumn, step + 1, params);
 		tableAlias = "s" + (step + 1);
 	} else {
 		// recurse
-		query += funnelSubquery(joinColumn, step+1, params);
+		query += funnelSubquery(table, joinColumn, step+1, params);
 		tableAlias = "t" + (step + 1);
 	}
 	query += indent(step+1) + "ON s" + step + "." + joinColumn + step + " = " + tableAlias + "." + joinColumn + (step+1) + "\n";
@@ -611,10 +612,10 @@ FROM [events.eventlog]
 WHERE eventName = "a"
 GROUP EACH BY userKey0) AS s0
 */
-function filterTableSubquery(joinColumn,step, params) {
+function filterTableSubquery(table, joinColumn, step, params) {
 	var query = "";
 	query += indent(step+2) + "(SELECT " + joinColumn + " AS " + joinColumn + step + ", MIN(timestamp) AS timestamp" + step + "\n";
-	query += indent(step+3) + "FROM " + EVENT_TABLE + "\n";
+	query += indent(step+3) + "FROM [" + table + "] \n";
 	query += indent(step+3) + 'WHERE name = "' + params[step].name +'"\n';
 	query += indent(step+3) + "GROUP EACH BY " + joinColumn + step + ") AS s" + step + "\n";
 	return query;
