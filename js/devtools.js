@@ -171,7 +171,7 @@ function expandTemplatesInQueryPressed(e) {
 		query = replaceFirstLastTemplates(query);
 	}
 
-	if (query.indexOf('funnel:') > -1) {
+	if (query.indexOf('funnel,') > -1) {
 		query = replaceFunnelTemplates(query);
 	}
 
@@ -179,7 +179,7 @@ function expandTemplatesInQueryPressed(e) {
 }
 
 function replaceFunnelTemplates(query) {
-	return query + 'a';
+	return funnelQueryFromString(query);
 }
 
 function replaceFirstLastTemplates(query) {
@@ -488,3 +488,134 @@ function clickButton(sb) {
 	    0, pos.left, pos.top, 0, 0, false, false, false, false, 0, null);
 	sb[0].dispatchEvent(evt);
 };
+
+/************************************************
+** Funnel query generation
+*************************************************/
+
+/** string - a comma-separated list of funnel,eventName1,eventName2, ...
+ */
+function funnelQueryFromString(string)
+{
+	var paramsArray = string.split(",");
+	var objectArray = [];
+	for (var i=1; i < paramsArray.length; i++) {
+		var object = {
+			name: paramsArray[i]
+		};
+		objectArray.push(object);
+	}
+	return funnelQuery(objectArray);
+}
+
+
+/** params - a array of objects of the form:
+
+eventName - the eventName on which to search on
+
+*/
+function indent(n) {
+	return Array(n+1).join(" ");
+}
+/*
+Output looks like this:
+
+SELECT COUNT(timestamp0), COUNT(timestamp1) FROM
+(SELECT userKey0, timestamp0, timestamp1
+FROM
+    (SELECT userKey as userKey0, MIN(timestamp) AS timestamp0 
+        FROM [events.events]
+        WHERE name = "a"
+        GROUP EACH BY userKey0) AS s0
+    LEFT JOIN EACH
+        (SELECT userKey as userKey1, MIN(timestamp) AS timestamp1 
+            FROM [events.events]
+            WHERE name = "b"
+            GROUP EACH BY userKey1) AS s1
+    ON s0.userKey0 = s1.userKey1) AS t0
+
+or this:
+
+SELECT count(timestamp0), count(timestamp1), count(timestamp2)
+FROM
+	(SELECT userKey0, timestamp0, timestamp1, timestamp2
+	FROM
+		(SELECT userKey AS userKey0, MIN(timestamp) AS timestamp0 
+		FROM [events.eventlog]
+		WHERE name="a"
+		GROUP EACH BY userKey0) AS s0
+	LEFT JOIN EACH 
+		(SELECT userKey1, timestamp1, timestamp2 
+		FROM
+			(SELECT userKey AS userKey1, MIN(timestamp) AS timestamp1 
+			FROM [events.eventlog]
+	 		WHERE name = "b"
+			GROUP EACH BY userKey1) AS s1
+		LEFT JOIN EACH
+			(SELECT userKey AS userKey2, MIN(timestamp) AS timestamp2 
+			FROM [events.eventlog]
+			WHERE name = "c"
+			GROUP EACH BY userKey2) AS s2
+		ON s1.userKey1 = s2.userKey2) AS t1
+	ON s0.userKey0 = t1.userKey1) AS t0
+*/
+var EVENT_TABLE = "[events_dev.events]";
+
+function funnelQuery(params)
+{
+	var query = "";
+	// SELECT count(timestamp0), count(timestamp1), count(timestamp2)
+	query += "SELECT"
+	for (var i = 0; i < params.length; i++) {
+		query += " COUNT(timestamp" + i + ")";
+		if (i === params.length - 1) {
+			query += "\n";
+		} else {
+			query += ",";
+		}
+	}
+	query += "FROM\n";
+	query += funnelSubquery(0,params);
+	return query;
+		
+}
+
+function funnelSubquery(step,params) {
+	var query = "";
+	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
+	query += "(SELECT userKey" + step;
+	for (var i = step; i < params.length; i++) {
+		query += ", timestamp" + i;
+	}
+	query += "\n";
+	query += indent(step+1) + "FROM\n";
+	query += filterTableSubquery(step, params);
+
+	query += indent(step+1) + "LEFT JOIN EACH\n";
+	if (step === params.length - 2) {
+		// base case
+		query += filterTableSubquery(step + 1, params);
+		query += indent(step+1) + "ON s" + step + ".userKey" + step + " = s" + (step+1) + ".userKey" + (step+1);	
+	} else {
+		// recurse
+		query += funnelSubquery(step+1,params);
+		query += indent(step+1) + "ON s" + step + ".userKey" + step + " = t" + (step+1) + ".userKey" + (step+1);			
+	}
+	query += ") AS t" + step + "\n";
+	return query;
+}
+
+/* 
+(SELECT userKey AS userKey0, MIN(timestamp) AS timestamp0 
+FROM [events.eventlog]
+WHERE eventName = "a"
+GROUP EACH BY userKey0) AS s0
+*/
+function filterTableSubquery(step, params) {
+	var query = "";
+	query += indent(step+2) + "(SELECT userKey AS userKey" + step + ", MIN(timestamp) AS timestamp" + step + "\n";
+	query += indent(step+3) + "FROM " + EVENT_TABLE + "\n";
+	query += indent(step+3) + 'WHERE name = "' + params[step].name +'"\n';
+	query += indent(step+3) + "GROUP EACH BY userKey" + step + ") AS s" + step + "\n";
+	return query;
+}
