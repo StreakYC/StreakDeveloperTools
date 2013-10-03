@@ -565,7 +565,7 @@ function funnelQuery(table, joinColumn, nameColumn, timestampColumn, steps)
 	// SELECT count(timestamp0), count(timestamp1), count(timestamp2)
 	query += "SELECT"
 	for (var i = 0; i < steps.length; i++) {
-		query += " COUNT(timestamp" + i + ")";
+		query += " COUNT(timestamp" + i + ") AS " + steps[i].name + "_" + i;
 		if (i === steps.length - 1) {
 			query += "\n";
 		} else {
