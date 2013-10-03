@@ -489,31 +489,30 @@ function clickButton(sb) {
 ** Funnel query generation
 *************************************************/
 
-/** string - a comma-separated list of funnel,table,joinColumn,eventName1,eventName2, ...
-- table is likely events.dev or events.prod
+/** string - a comma-separated list of funnel,table,joinColumn,nameColumn,eventName1,eventName2, ...
+- table is likely [events.dev] or [events.prod]
 - joinColumn is likely userKey or sessionId
+- nameColumn is likely name
+- timestampColumn is likely timestamp
  */
 function funnelQueryFromString(string)
 {
 	var paramsArray = string.split(",");
     var table = paramsArray[1];
 	var joinColumn = paramsArray[2];
-	var objectArray = [];
-	for (var i=3; i < paramsArray.length; i++) {
+	var nameColumn = paramsArray[3];
+	var timestampColumn = paramsArray[4];
+	var stepArray = [];
+	for (var i=5; i < paramsArray.length; i++) {
 		var object = {
 			name: paramsArray[i]
 		};
-		objectArray.push(object);
+		stepArray.push(object);
 	}
-	return funnelQuery(table, joinColumn, objectArray);
+	return funnelQuery(table, joinColumn, nameColumn, timestampColumn, stepArray);
 }
 
 
-/** params - a array of objects of the form:
-
-eventName - the eventName on which to search on
-
-*/
 function indent(n) {
 	return Array(n+1).join(" ");
 }
@@ -560,49 +559,49 @@ FROM
 	ON s0.userKey0 = t1.userKey1) AS t0
 */
 
-function funnelQuery(table, joinColumn, params)
+function funnelQuery(table, joinColumn, nameColumn, timestampColumn, steps)
 {
 	var query = "";
 	// SELECT count(timestamp0), count(timestamp1), count(timestamp2)
 	query += "SELECT"
-	for (var i = 0; i < params.length; i++) {
+	for (var i = 0; i < steps.length; i++) {
 		query += " COUNT(timestamp" + i + ")";
-		if (i === params.length - 1) {
+		if (i === steps.length - 1) {
 			query += "\n";
 		} else {
 			query += ",";
 		}
 	}
 	query += "FROM\n";
-	query += funnelSubquery(table, joinColumn, 0, params);
+	query += funnelSubquery(table, joinColumn, nameColumn, timestampColumn, steps, 0);
 	return query;
 		
 }
 
-function funnelSubquery(table, joinColumn, step, params) {
+function funnelSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber) {
 	var query = "";
 	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
-	query += "(SELECT " + joinColumn + step;
-	for (var i = step; i < params.length; i++) {
+	query += "(SELECT " + joinColumn + stepNumber;
+	for (var i = stepNumber; i < steps.length; i++) {
 		query += ", timestamp" + i;
 	}
 	query += "\n";
-	query += indent(step+1) + "FROM\n";
-	query += filterTableSubquery(table, joinColumn, step, params);
+	query += indent(stepNumber+1) + "FROM\n";
+	query += filterTableSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber);
 
-	query += indent(step+1) + "LEFT JOIN EACH\n";
+	query += indent(stepNumber+1) + "LEFT JOIN EACH\n";
 	var tableAlias;
-	if (step === params.length - 2) {
+	if (stepNumber === steps.length - 2) {
 		// base case
-		query += filterTableSubquery(table, joinColumn, step + 1, params);
-		tableAlias = "s" + (step + 1);
+		query += filterTableSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber + 1);
+		tableAlias = "s" + (stepNumber + 1);
 	} else {
 		// recurse
-		query += funnelSubquery(table, joinColumn, step+1, params);
-		tableAlias = "t" + (step + 1);
+		query += funnelSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber+1);
+		tableAlias = "t" + (stepNumber + 1);
 	}
-	query += indent(step+1) + "ON s" + step + "." + joinColumn + step + " = " + tableAlias + "." + joinColumn + (step+1) + "\n";
-	query += ") AS t" + step + "\n";
+	query += indent(stepNumber+1) + "ON s" + stepNumber + "." + joinColumn + stepNumber + " = " + tableAlias + "." + joinColumn + (stepNumber+1) + "\n";
+	query += ") AS t" + stepNumber + "\n";
 	return query;
 }
 
@@ -612,11 +611,11 @@ FROM [events.eventlog]
 WHERE eventName = "a"
 GROUP EACH BY userKey0) AS s0
 */
-function filterTableSubquery(table, joinColumn, step, params) {
+function filterTableSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber) {
 	var query = "";
-	query += indent(step+2) + "(SELECT " + joinColumn + " AS " + joinColumn + step + ", MIN(timestamp) AS timestamp" + step + "\n";
-	query += indent(step+3) + "FROM [" + table + "] \n";
-	query += indent(step+3) + 'WHERE name = "' + params[step].name +'"\n';
-	query += indent(step+3) + "GROUP EACH BY " + joinColumn + step + ") AS s" + step + "\n";
+	query += indent(stepNumber+2) + "(SELECT " + joinColumn + " AS " + joinColumn + stepNumber + ", MIN(" + timestampColumn + ") AS timestamp" + stepNumber + "\n";
+	query += indent(stepNumber+3) + "FROM " + table + " \n";
+	query += indent(stepNumber+3) + 'WHERE ' + nameColumn + ' = "' + steps[stepNumber].name + '"\n';
+	query += indent(stepNumber+3) + "GROUP EACH BY " + joinColumn + stepNumber + ") AS s" + stepNumber + "\n";
 	return query;
 }
