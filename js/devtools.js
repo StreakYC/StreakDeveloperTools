@@ -535,6 +535,7 @@ steps eventName1,eventName2, ...
 - joinColumn is likely userKey or sessionId
 - nameColumn is likely name
 - timestampColumn is likely timestamp
+- include a line "percents" if you want percentages
  */
 function funnelQueryFromString(string)
 {
@@ -542,16 +543,20 @@ function funnelQueryFromString(string)
 	var params = {"table":"[events.prod]",
 				  "joinColumn":"sessionId", 
 				  "nameColumn":"name",
-				  "timestampColumn":"timestamp"};
+				  "timestampColumn":"timestamp",
+				  "percents":false};
 
 	for (var i = 1; i < lines.length; i++) {
 		var lineParams = lines[i].split(" ");
-		if (lineParams.length >= 2) {
+		if (lineParams.length == 1) {
+			params[lineParams[0]] = true;
+		} else if (lineParams.length >= 2) {
 			var param = lineParams[0];
 			var value = lineParams.slice(1).join(" ");
 			params[param] = value;
 		}
 	}
+
 	var stepsArray = params["steps"].split(",");
 	var steps = [];
 	for (var i=0; i < stepsArray.length; i++) {
@@ -642,10 +647,18 @@ function funnelQuery(params)
 	}
 	for (var i = 0; i < params.steps.length; i++) {
 		query += " COUNT(timestamp" + i + ") AS " + params.steps[i].name + "_" + i;
-		if (i === params.steps.length - 1) {
+		if (i === params.steps.length - 1 && (!params.percents || i === 0)) {
 			query += "\n";
 		} else {
 			query += ",";
+		}
+		if (params.percents && i > 0) {
+			query += " 100*COUNT(timestamp" + i + ")/COUNT(timestamp" + (i-1) + ") AS " + params.steps[i].name + "_percent_" + i;
+			if (i === params.steps.length - 1) {
+				query += "\n";
+			} else {
+				query += ",";
+			}
 		}
 	}
 	query += "FROM\n";
