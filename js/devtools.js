@@ -3,7 +3,6 @@ var expandTemplateButton = null;
 
 var timeseriesGraphButton = null;
 var columnXYGraphButton = null;
-var columnYXGraphButton = null;
 var showGraphsDiv = null;
 var hideGraphButton = null;
 
@@ -143,7 +142,7 @@ function addGraphButtonsToPage() {
 }
 
 function showGraph(chartType) {
-	var data = getDataArrayFromResults();
+	var data = getDataArrayFromResults(chartType);
 
     data = JSON.stringify(data);
     data = encodeURIComponent(data);
@@ -162,14 +161,11 @@ function showGraph(chartType) {
 function createGraphButtons() {
 	timeseriesGraphButton = $('<div id="timeseriesGraphButton" class="goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right" role="button" style="-webkit-user-select: none;" tabindex="0">Timeseries Graph</div>');
 	columnXYGraphButton = $('<div id="columnXYGraphButton" class="goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right" role="button" style="-webkit-user-select: none;" tabindex="0">Column XY Graph</div>');
-	columnYXGraphButton = $('<div id="columnYXGraphButton" class="goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right" role="button" style="-webkit-user-select: none;" tabindex="0">Column YX Graph</div>');
 	hideGraphButton = $('<div id="hideGraphButton" class="goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right" role="button" style="-webkit-user-select: none;" tabindex="0">Hide Graph</div>');
 
 	showGraphsDiv = $('<span id="showGraphsDiv"></span>');
 	showGraphsDiv.append(timeseriesGraphButton);
 	showGraphsDiv.append(columnXYGraphButton);
-	showGraphsDiv.append(columnYXGraphButton);
-
 
 	addHoverToGraphButtons();
 	addEventHandlersToGraphButtons();
@@ -186,24 +182,19 @@ function addEventHandlersToGraphButtons() {
 		showGraph('columnXY');
 	});
 
-	columnYXGraphButton.click(function() {
-		showGraph('columnYX');
-	});
-
 	hideGraphButton.click(function() {
 		hideGraph();
 	});
 }
 
 function addHoverToGraphButtons() {
-	var buttons = [timeseriesGraphButton, columnXYGraphButton, columnYXGraphButton, hideGraphButton];
+	var buttons = [timeseriesGraphButton, columnXYGraphButton, hideGraphButton];
 	
-	for (var i; i < buttons.length; i++) {
-		var button = buttons[i];
+	$.each(buttons, function(i, button) {
 		button.hover(function() {
 			button.toggleClass('jfk-button-hover');
 		});
-	}
+	});
 }
 
 
@@ -258,7 +249,7 @@ function getLastTableInDataset(dataset) {
 	return $('#tables').find('[id*=' + dataset + '][id*=tableId]').last().find('.tables-table-id-text').text();
 }
 
-function getDataArrayFromResults() {
+function getDataArrayFromResults(chartType) {
 	var retVal = [];
 
 	var headerCells = $('#result-table .records-header:not(.records-filler):not(:first-child)');
@@ -276,7 +267,12 @@ function getDataArrayFromResults() {
 		for (var j = 0; j < cols.length; j++) {
 			var col = $(cols[j]);
 			if (j == 0) {
-				rowArray.push(Date.parse(col.text()));	
+				if (chartType == 'timeseries') {
+					rowArray.push(Date.parse(col.text()));	
+				}
+				else if (chartType == 'columnXY') {
+					rowArray.push(col.text());	
+				}
 			}
 			else {
 				if (isNumeric(col.text())) {
