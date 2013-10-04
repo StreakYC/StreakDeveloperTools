@@ -637,6 +637,9 @@ function funnelQuery(params)
 			hasGroupBy = true;		
 		}
 	}
+	if (!hasGroupBy) {
+		query += ' "funnel" AS funnel,';
+	}
 	for (var i = 0; i < params.steps.length; i++) {
 		query += " COUNT(timestamp" + i + ") AS " + params.steps[i].name + "_" + i;
 		if (i === params.steps.length - 1) {
@@ -658,7 +661,7 @@ function funnelQuery(params)
 				query += params.steps[i].groupBy + i;	
 				numGroupBys++;
 			}
-		}	
+		}
 		query += "\n";	
 	}
 	return query;	
