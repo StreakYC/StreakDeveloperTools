@@ -41,9 +41,6 @@ function getChartDataTable(dataArray, chartType) {
     else if (chartType == 'columnXY') {
         return google.visualization.arrayToDataTable(transpose(dataArray));
     }
-    else if (chartType == 'columnYX') {
-        return google.visualization.arrayToDataTable(dataArray);
-    }
 }
 
 function transpose(arr) {
