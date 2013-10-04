@@ -1,42 +1,19 @@
 var sidebar = null;
 var expandTemplateButton = null;
-var showGraphButton = null;
+
+var timeseriesGraphButton = null;
+var columnXYGraphButton = null;
+var columnYXGraphButton = null;
+var showGraphsDiv = null;
 var hideGraphButton = null;
+
 var datasetQueries = new Object();
 var lastDatasetSelected = '';
 
 $(document).ready(function() {
-	createShowGraphButton();
-	createHideGraphButton();
+	createGraphButtons();
 	createTemplateExpansionButton();
-	hideGraphButton.hide();
-	
-	expandTemplateButton.click(expandTemplatesInQueryPressed);
 
-	
-	showGraphButton.click(function(e){
-		var data = getDataArrayFromResults();
-
-        data = JSON.stringify(data);
-        data = encodeURIComponent(data);
-
-        var uri = chrome.extension.getURL("resources/chart.html?data=" + data);
-		var iframe = $('<iframe id="chart"></iframe>');
-		iframe.attr('src', uri);
-		iframe.css('width', '100%');
-		iframe.css('height', '300px')
-		$('#content-panel-main .content-header').parent().prepend(iframe)
-
-		showGraphButton.hide();
-		hideGraphButton.show();
-	});
-
-	hideGraphButton.click(function(e){
-		$('#chart').remove();
-		showGraphButton.show();
-		hideGraphButton.hide();
-	});
-	
 	var t = setInterval(function() {
 		// check if results exist
 		if ($('#content-panel-main').height() != 15000) {
@@ -55,15 +32,7 @@ $(document).ready(function() {
 		}
 		
 		// add show graph button
-		var downloadButton = $('#download');
-		if (downloadButton.size() != 0) {
-			if (downloadButton.parent().find('#showGraphButton').size() == 0) {
-				showGraphButton.insertBefore(downloadButton);
-			}
-			if (downloadButton.parent().find('#hideGraphButton').size() == 0) {
-				hideGraphButton.insertBefore(downloadButton);
-			}
-		}
+		addGraphButtonsToPage();
 		
 		// add cost indicator to query results
 		var queryStatus = $("#query-status");
@@ -155,6 +124,90 @@ $(document).ready(function() {
 	},1000);	
 });
 
+function hideGraph() {
+	$('#chart').remove();
+	showGraphsDiv.show();
+	hideGraphButton.hide();
+}
+
+function addGraphButtonsToPage() {
+	var downloadButton = $('#download');
+	if (downloadButton.size() != 0) {
+		if (downloadButton.parent().find('#showGraphsDiv').size() == 0) {
+			showGraphsDiv.insertBefore(downloadButton);
+		}
+		if (downloadButton.parent().find('#hideGraphButton').size() == 0) {
+			hideGraphButton.insertBefore(downloadButton);
+		}
+	}
+}
+
+function showGraph(chartType) {
+	var data = getDataArrayFromResults();
+
+    data = JSON.stringify(data);
+    data = encodeURIComponent(data);
+
+    var uri = chrome.extension.getURL("resources/chart.html?chartType=" + chartType + "&data=" + data);
+	var iframe = $('<iframe id="chart"></iframe>');
+	iframe.attr('src', uri);
+	iframe.css('width', '100%');
+	iframe.css('height', '300px')
+	$('#content-panel-main .content-header').parent().prepend(iframe)
+
+	showGraphsDiv.hide();
+	hideGraphButton.show();
+}
+
+function createGraphButtons() {
+	timeseriesGraphButton = $('<div id="timeseriesGraphButton" class="goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right" role="button" style="-webkit-user-select: none;" tabindex="0">Timeseries Graph</div>');
+	columnXYGraphButton = $('<div id="columnXYGraphButton" class="goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right" role="button" style="-webkit-user-select: none;" tabindex="0">Column XY Graph</div>');
+	columnYXGraphButton = $('<div id="columnYXGraphButton" class="goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right" role="button" style="-webkit-user-select: none;" tabindex="0">Column YX Graph</div>');
+	hideGraphButton = $('<div id="hideGraphButton" class="goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right" role="button" style="-webkit-user-select: none;" tabindex="0">Hide Graph</div>');
+
+	showGraphsDiv = $('<span id="showGraphsDiv"></span>');
+	showGraphsDiv.append(timeseriesGraphButton);
+	showGraphsDiv.append(columnXYGraphButton);
+	showGraphsDiv.append(columnYXGraphButton);
+
+
+	addHoverToGraphButtons();
+	addEventHandlersToGraphButtons();
+
+	hideGraphButton.hide();
+};
+
+function addEventHandlersToGraphButtons() {
+	timeseriesGraphButton.click(function() {
+		showGraph('timeseries');
+	});
+
+	columnXYGraphButton.click(function() {
+		showGraph('columnXY');
+	});
+
+	columnYXGraphButton.click(function() {
+		showGraph('columnYX');
+	});
+
+	hideGraphButton.click(function() {
+		hideGraph();
+	});
+}
+
+function addHoverToGraphButtons() {
+	var buttons = [timeseriesGraphButton, columnXYGraphButton, columnYXGraphButton, hideGraphButton];
+	
+	for (var i; i < buttons.length; i++) {
+		var button = buttons[i];
+		button.hover(function() {
+			button.toggleClass('jfk-button-hover');
+		});
+	}
+}
+
+
+
 function getDatasetNames() {
 	var dataSetEles = $(".tables-dataset-id-text");
 	var datasetNames = [];
@@ -218,7 +271,7 @@ function getDataArrayFromResults() {
 	var rows = $('#result-table .records-row');
 	for (var i = 0; i < rows.length; i++) {
 		var row = $(rows[i]);
-		var cols = row.find('.records-cell-number');
+		var cols = row.find('.records-cell:not(.records-filler)');
 		var rowArray = [];
 		for (var j = 0; j < cols.length; j++) {
 			var col = $(cols[j]);
@@ -402,30 +455,9 @@ function normalizeTitle(title) {
 	return title;
 };
 
-function createShowGraphButton() {
-	showGraphButton = $("<div id=\"showGraphButton\" class=\"goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right\" role=\"button\" style=\"-webkit-user-select: none;\" tabindex=\"0\">Show Graph</div>");
-	showGraphButton.hover(function() {
-		showGraphButton.addClass('jfk-button-hover');
-	},
-	function() {
-		showGraphButton.removeClass('jfk-button-hover');
-	}
-	);
-};
-
-function createHideGraphButton() {
-	hideGraphButton = $("<div id=\"hideGraphButton\" class=\"goog-inline-block jfk-button jfk-button-standard jfk-button-collapse-right\" role=\"button\" style=\"-webkit-user-select: none;\" tabindex=\"0\">Hide Graph</div>");
-	hideGraphButton.hover(function() {
-		hideGraphButton.addClass('jfk-button-hover');
-	},
-	function() {
-		hideGraphButton.removeClass('jfk-button-hover');
-	}
-	);
-};
-
 function createTemplateExpansionButton() {
 	expandTemplateButton = $("<div id=\"expand-query\" class=\"jfk-button jfk-button-standard goog-inline-block\" role=\"button\" style=\"-webkit-user-select: none;\" aria-disabled=\"false\" aria-label=\"foo\" data-tooltip=\"This will expand dataset:first/last toi the first or last table in the specified dataset.\" data-tooltip-align=\"b,c\" data-tooltip-delay=\"1000\" tabindex=\"0\">Expand Templates</div>");
+	expandTemplateButton.click(expandTemplatesInQueryPressed);
 };
 
 
