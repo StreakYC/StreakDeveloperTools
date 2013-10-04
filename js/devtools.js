@@ -561,7 +561,18 @@ function funnelQueryFromString(string)
 		steps.push(stepObject);
 	}
 	params["steps"] = steps;
-	return funnelQuery(params);
+	var query = funnelQuery(params);
+	query = addCommentedTemplate(lines,query);
+	return query;
+}
+
+function addCommentedTemplate(lines,query)
+{
+	query += "\n";
+	for (var i = 0; i < lines.length; i++) {
+		query += "// " + lines[i] + "\n";
+	}
+	return query;
 }
 
 function indent(n) {
@@ -622,6 +633,9 @@ function funnelQuery(params)
 			hasGroupBy = true;		
 		}
 	}
+	if (!hasGroupBy) {
+		query += ' "funnel" AS funnel,';
+	}
 	for (var i = 0; i < params.steps.length; i++) {
 		query += " COUNT(timestamp" + i + ") AS " + params.steps[i].name + "_" + i;
 		if (i === params.steps.length - 1) {
@@ -643,7 +657,8 @@ function funnelQuery(params)
 				query += params.steps[i].groupBy + i;	
 				numGroupBys++;
 			}
-		}		
+		}
+		query += "\n";	
 	}
 	return query;	
 }
