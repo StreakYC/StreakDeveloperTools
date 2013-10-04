@@ -224,7 +224,7 @@ function expandTemplatesInQueryPressed(e) {
 		query = replaceFirstLastTemplates(query);
 	}
 
-	if (query.indexOf('funnel,') > -1) {
+	if (query.indexOf('funnel') > -1) {
 		query = funnelQueryFromString(query);
 	}
 
@@ -521,7 +521,16 @@ function clickButton(sb) {
 ** Funnel query generation
 *************************************************/
 
-/** string - a comma-separated list of funnel,table,joinColumn,nameColumn,eventName1,eventName2, ...
+function breakApartByLine(string) {
+	return string.match(/[^\r\n]+/g);
+}
+
+/** string - a line-separated list of pairs (the space is required):
+funnel
+table t
+joinColumn j
+nameColumn n
+steps eventName1,eventName2, ...
 - table is likely [events.dev] or [events.prod]
 - joinColumn is likely userKey or sessionId
 - nameColumn is likely name
@@ -529,21 +538,35 @@ function clickButton(sb) {
  */
 function funnelQueryFromString(string)
 {
-	var paramsArray = string.split(",");
-    var table = paramsArray[1];
-	var joinColumn = paramsArray[2];
-	var nameColumn = paramsArray[3];
-	var timestampColumn = paramsArray[4];
-	var stepArray = [];
-	for (var i=5; i < paramsArray.length; i++) {
-		var object = {
-			name: paramsArray[i]
-		};
-		stepArray.push(object);
-	}
-	return funnelQuery(table, joinColumn, nameColumn, timestampColumn, stepArray);
-}
+	var lines = string.match(/[^\r\n]+/g);  // break apart by line
+	var params = {"table":"[events.prod]",
+				  "joinColumn":"sessionId", 
+				  "nameColumn":"name",
+				  "timestampColumn":"timestamp"};
 
+	for (var i = 1; i < lines.length; i++) {
+		var lineParams = lines[i].split(" ");
+		if (lineParams.length >= 2) {
+			var param = lineParams[0];
+			var value = lineParams.slice(1).join(" ");
+			params[param] = value;
+		}
+	}
+	var stepsArray = params["steps"].split(",");
+	var steps = [];
+	for (var i=0; i < stepsArray.length; i++) {
+		var stepParam = stepsArray[i].split(" ");
+		var stepObject = {
+			name: stepParam[0]
+		};
+		if (stepParam.length == 2) {
+			stepObject.groupBy = stepParam[1];
+		}
+		steps.push(stepObject);
+	}
+	params["steps"] = steps;
+	return funnelQuery(params);
+}
 
 function indent(n) {
 	return Array(n+1).join(" ");
@@ -591,48 +614,71 @@ FROM
 	ON s0.userKey0 = t1.userKey1) AS t0
 */
 
-function funnelQuery(table, joinColumn, nameColumn, timestampColumn, steps)
+function funnelQuery(params)
 {
 	var query = "";
 	// SELECT count(timestamp0), count(timestamp1), count(timestamp2)
-	query += "SELECT"
-	for (var i = 0; i < steps.length; i++) {
-		query += " COUNT(timestamp" + i + ") AS " + steps[i].name + "_" + i;
-		if (i === steps.length - 1) {
+	query += "SELECT";
+	var hasGroupBy = false;
+	for (var i = 0; i < params.steps.length; i++) {
+		if (params.steps[i].groupBy) {
+			query += " " + params.steps[i].groupBy + i + ",";	
+			hasGroupBy = true;		
+		}
+	}
+	for (var i = 0; i < params.steps.length; i++) {
+		query += " COUNT(timestamp" + i + ") AS " + params.steps[i].name + "_" + i;
+		if (i === params.steps.length - 1) {
 			query += "\n";
 		} else {
 			query += ",";
 		}
 	}
 	query += "FROM\n";
-	query += funnelSubquery(table, joinColumn, nameColumn, timestampColumn, steps, 0);
-	return query;
-		
+	query += funnelSubquery(params, 0);
+	if (hasGroupBy) {
+		query += "GROUP BY ";
+		var numGroupBys = 0;
+		for (var i = 0; i < params.steps.length; i++) {
+			if (params.steps[i].groupBy) {
+				if (numGroupBys > 0) {
+					query += ", ";
+				}
+				query += params.steps[i].groupBy + i;	
+				numGroupBys++;
+			}
+		}		
+	}
+	return query;	
 }
 
-function funnelSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber) {
+function funnelSubquery(params, stepNumber) {
 	var query = "";
 	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
-	query += "(SELECT " + joinColumn + stepNumber;
-	for (var i = stepNumber; i < steps.length; i++) {
+	query += "(SELECT "
+	query += params.joinColumn + stepNumber;
+	for (var i = stepNumber; i < params.steps.length; i++) {
 		query += ", timestamp" + i;
+		if (params.steps[i].groupBy) {
+			query += ", " + params.steps[i].groupBy + i;			
+		}
 	}
 	query += "\n";
 	query += indent(stepNumber+1) + "FROM\n";
-	query += filterTableSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber);
+	query += filterTableSubquery(params, stepNumber);
 
 	query += indent(stepNumber+1) + "LEFT JOIN EACH\n";
 	var tableAlias;
-	if (stepNumber === steps.length - 2) {
+	if (stepNumber === params.steps.length - 2) {
 		// base case
-		query += filterTableSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber + 1);
+		query += filterTableSubquery(params, stepNumber + 1);
 		tableAlias = "s" + (stepNumber + 1);
 	} else {
 		// recurse
-		query += funnelSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber+1);
+		query += funnelSubquery(params, stepNumber+1);
 		tableAlias = "t" + (stepNumber + 1);
 	}
-	query += indent(stepNumber+1) + "ON s" + stepNumber + "." + joinColumn + stepNumber + " = " + tableAlias + "." + joinColumn + (stepNumber+1) + "\n";
+	query += indent(stepNumber+1) + "ON s" + stepNumber + "." + params.joinColumn + stepNumber + " = " + tableAlias + "." + params.joinColumn + (stepNumber+1) + "\n";
 	query += ") AS t" + stepNumber + "\n";
 	return query;
 }
@@ -643,11 +689,20 @@ FROM [events.eventlog]
 WHERE eventName = "a"
 GROUP EACH BY userKey0) AS s0
 */
-function filterTableSubquery(table, joinColumn, nameColumn, timestampColumn, steps, stepNumber) {
+function filterTableSubquery(params, stepNumber) {
 	var query = "";
-	query += indent(stepNumber+2) + "(SELECT " + joinColumn + " AS " + joinColumn + stepNumber + ", MIN(" + timestampColumn + ") AS timestamp" + stepNumber + "\n";
-	query += indent(stepNumber+3) + "FROM " + table + " \n";
-	query += indent(stepNumber+3) + 'WHERE ' + nameColumn + ' = "' + steps[stepNumber].name + '"\n';
-	query += indent(stepNumber+3) + "GROUP EACH BY " + joinColumn + stepNumber + ") AS s" + stepNumber + "\n";
+	var step = params.steps[stepNumber];
+	query += indent(stepNumber+2) + "(SELECT " + params.joinColumn + " AS " + params.joinColumn + stepNumber + ", MIN(" + params.timestampColumn + ") AS timestamp" + stepNumber;
+	if (step.groupBy) {
+		query += ", " + step.groupBy + " AS " + step.groupBy + stepNumber;
+	}
+	query += "\n";
+	query += indent(stepNumber+3) + "FROM " + params.table + " \n";
+	query += indent(stepNumber+3) + 'WHERE ' + params.nameColumn + ' = "' + step.name + '"\n';
+	query += indent(stepNumber+3) + "GROUP EACH BY " + params.joinColumn + stepNumber;
+	if (step.groupBy) {
+		query += ", " + step.groupBy + stepNumber;
+	}
+	query += ") AS s" + stepNumber + "\n";
 	return query;
 }
