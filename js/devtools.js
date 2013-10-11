@@ -409,23 +409,25 @@ function runQuery(query) {
 function fillInQuery(query) {
 	
 	clickButton($("#query-history-button"));
-	var savedQueries = $('.queries-table-content');
+	setTimeout(function() {
+		var savedQueries = $('.queries-table-content');
 
-	if (savedQueries.length == 0) {
-		alert('You must have at least one saved query for this feature to work');
-	}
-	else {
-		var oldDataSql = savedQueries.last().attr('data-sql');
-		var oldDataId = savedQueries.last().attr('data-id');
+		if (savedQueries.length == 0) {
+			alert('You must have at least one saved query for this feature to work');
+		}
+		else {
+			var oldDataSql = savedQueries.last().attr('data-sql');
+			var oldDataId = savedQueries.last().attr('data-id');
 
-		savedQueries.last().attr('data-sql', query);
-		savedQueries.last().attr('data-id', oldDataId + 'A');
+			savedQueries.last().attr('data-sql', query);
+			savedQueries.last().attr('data-id', oldDataId + 'A');
 
-		clickButton(savedQueries.last());
+			clickButton(savedQueries.last());
 
-		savedQueries.last().attr('data-sql', oldDataSql);
-		savedQueries.last().attr('data-id', oldDataId);		
-	}
+			savedQueries.last().attr('data-sql', oldDataSql);
+			savedQueries.last().attr('data-id', oldDataId);		
+		}
+	},500);
 };
 
 function getQueryBoxContents() {
