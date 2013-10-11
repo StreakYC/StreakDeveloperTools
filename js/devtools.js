@@ -822,8 +822,11 @@ function orderedFunnelSubquery(params, stepNumber) {
 	var query = "";
 	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
 	query += indent(stepNumber+2) + "(SELECT ";
-	query += params.joinColumn + "0";
 	for (var i = 0; i <= stepNumber; i++) {
+		if (i > 0) {
+			query += ", ";
+		}
+		query += params.joinColumn + i;
 		query += ", timestamp" + i;
 		if (params.steps[i].groupBy) {
 			query += ", " + params.steps[i].groupBy + i;			
@@ -845,7 +848,7 @@ function orderedFunnelSubquery(params, stepNumber) {
 	query += indent(stepNumber+3) + "LEFT JOIN EACH\n";
 	query += orderedFilterTableSubquery(params, stepNumber);
 
-	query += indent(stepNumber+3) + "ON " + tableAlias + "." + params.joinColumn + "0" + " = " + "s" + stepNumber + "." + params.joinColumn + stepNumber + "\n";
+	query += indent(stepNumber+3) + "ON " + tableAlias + "." + params.joinColumn + (stepNumber - 1) + " = " + "s" + stepNumber + "." + params.joinColumn + stepNumber + "\n";
 	query += indent(stepNumber+3) + "WHERE (timestamp" + stepNumber + " IS NULL) OR (timestamp" + (stepNumber-1) + " < timestamp" + stepNumber + ")\n"; 
 	query += indent(stepNumber+2) + ") AS t" + stepNumber + "\n";
 	return query;
