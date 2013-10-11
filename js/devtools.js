@@ -532,7 +532,6 @@ steps eventName1,eventName2, ...
 - nameColumn is likely name
 - timestampColumn is likely timestamp
 - include a line "percents" if you want percentages
-- include a line "unordered" if you want an unordered funnel
  */
 function funnelQueryFromString(string)
 {
@@ -541,8 +540,7 @@ function funnelQueryFromString(string)
 				  "joinColumn":"sessionId", 
 				  "nameColumn":"name",
 				  "timestampColumn":"timestamp",
-				  "percents":false,
-				  "unordered":false};
+				  "percents":false};
 
 	for (var i = 1; i < lines.length; i++) {
 		var lineParams = lines[i].split(" ");
@@ -568,12 +566,7 @@ function funnelQueryFromString(string)
 		steps.push(stepObject);
 	}
 	params["steps"] = steps;
-	var query;
-	if (params["unordered"]) {
-		query = funnelQuery(params);		
-	} else {
-		query = orderedFunnelQuery(params);
-	}
+	var query = orderedFunnelQuery(params);
 	query = addCommentedTemplate(lines,query);
 	return query;
 }
@@ -590,160 +583,10 @@ function addCommentedTemplate(lines,query)
 function indent(n) {
 	return Array(n+1).join(" ");
 }
-/*
-Output looks like this:
-
-SELECT COUNT(timestamp0), COUNT(timestamp1) FROM
-(SELECT userKey0, timestamp0, timestamp1
-FROM
-    (SELECT userKey as userKey0, MIN(timestamp) AS timestamp0 
-        FROM [events.events]
-        WHERE name = "a"
-        GROUP EACH BY userKey0) AS s0
-    LEFT JOIN EACH
-        (SELECT userKey as userKey1, MIN(timestamp) AS timestamp1 
-            FROM [events.events]
-            WHERE name = "b"
-            GROUP EACH BY userKey1) AS s1
-    ON s0.userKey0 = s1.userKey1) AS t0
-
-or this:
-
-SELECT count(timestamp0), count(timestamp1), count(timestamp2)
-FROM
-	(SELECT userKey0, timestamp0, timestamp1, timestamp2
-	FROM
-		(SELECT userKey AS userKey0, MIN(timestamp) AS timestamp0 
-		FROM [events.eventlog]
-		WHERE name="a"
-		GROUP EACH BY userKey0) AS s0
-	LEFT JOIN EACH 
-		(SELECT userKey1, timestamp1, timestamp2 
-		FROM
-			(SELECT userKey AS userKey1, MIN(timestamp) AS timestamp1 
-			FROM [events.eventlog]
-	 		WHERE name = "b"
-			GROUP EACH BY userKey1) AS s1
-		LEFT JOIN EACH
-			(SELECT userKey AS userKey2, MIN(timestamp) AS timestamp2 
-			FROM [events.eventlog]
-			WHERE name = "c"
-			GROUP EACH BY userKey2) AS s2
-		ON s1.userKey1 = s2.userKey2) AS t1
-	ON s0.userKey0 = t1.userKey1) AS t0
-*/
-
-function funnelQuery(params)
-{
-	var query = "";
-	// SELECT count(timestamp0), count(timestamp1), count(timestamp2)
-	query += "SELECT";
-	var hasGroupBy = false;
-	for (var i = 0; i < params.steps.length; i++) {
-		if (params.steps[i].groupBy) {
-			query += " " + params.steps[i].groupBy + i + ",";	
-			hasGroupBy = true;		
-		}
-	}
-	if (!hasGroupBy) {
-		query += ' "funnel" AS funnel,';
-	}
-	for (var i = 0; i < params.steps.length; i++) {
-		query += " COUNT(timestamp" + i + ") AS " + params.steps[i].name + "_" + i;
-		if (i === params.steps.length - 1 && (!params.percents || i === 0)) {
-			query += "\n";
-		} else {
-			query += ",";
-		}
-		if (params.percents && i > 0) {
-			query += " 100*COUNT(timestamp" + i + ")/COUNT(timestamp" + (i-1) + ") AS " + params.steps[i].name + "_percent_" + i;
-			if (i === params.steps.length - 1) {
-				query += "\n";
-			} else {
-				query += ",";
-			}
-		}
-	}
-	query += "FROM\n";
-	query += funnelSubquery(params, 0);
-	if (hasGroupBy) {
-		query += "GROUP BY ";
-		var numGroupBys = 0;
-		for (var i = 0; i < params.steps.length; i++) {
-			if (params.steps[i].groupBy) {
-				if (numGroupBys > 0) {
-					query += ", ";
-				}
-				query += params.steps[i].groupBy + i;	
-				numGroupBys++;
-			}
-		}
-		query += "\n";	
-	}
-	return query;	
-}
-
-function funnelSubquery(params, stepNumber) {
-	var query = "";
-	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
-	query += "(SELECT "
-	query += params.joinColumn + stepNumber;
-	for (var i = stepNumber; i < params.steps.length; i++) {
-		query += ", timestamp" + i;
-		if (params.steps[i].groupBy) {
-			query += ", " + params.steps[i].groupBy + i;			
-		}
-	}
-	query += "\n";
-	query += indent(stepNumber+1) + "FROM\n";
-	query += filterTableSubquery(params, stepNumber);
-
-	query += indent(stepNumber+1) + "LEFT JOIN EACH\n";
-	var tableAlias;
-	if (stepNumber === params.steps.length - 2) {
-		// base case
-		query += filterTableSubquery(params, stepNumber + 1);
-		tableAlias = "s" + (stepNumber + 1);
-	} else {
-		// recurse
-		query += funnelSubquery(params, stepNumber+1);
-		tableAlias = "t" + (stepNumber + 1);
-	}
-	query += indent(stepNumber+1) + "ON s" + stepNumber + "." + params.joinColumn + stepNumber + " = " + tableAlias + "." + params.joinColumn + (stepNumber+1) + "\n";
-	query += ") AS t" + stepNumber + "\n";
-	return query;
-}
-
-/* 
-(SELECT userKey AS userKey0, MIN(timestamp) AS timestamp0 
-FROM [events.eventlog]
-WHERE eventName = "a"
-GROUP EACH BY userKey0) AS s0
-*/
-function filterTableSubquery(params, stepNumber) {
-	var query = "";
-	var step = params.steps[stepNumber];
-	query += indent(stepNumber+2) + "(SELECT " + params.joinColumn + " AS " + params.joinColumn + stepNumber + ", MIN(" + params.timestampColumn + ") AS timestamp" + stepNumber;
-	if (step.groupBy) {
-		query += ", " + step.groupBy + " AS " + step.groupBy + stepNumber;
-	}
-	query += "\n";
-	query += indent(stepNumber+3) + "FROM " + params.table + " \n";
-	query += indent(stepNumber+3) + 'WHERE ' + params.nameColumn + ' = "' + step.name + '"\n';
-	query += indent(stepNumber+3) + "GROUP EACH BY " + params.joinColumn + stepNumber;
-	if (step.groupBy) {
-		query += ", " + step.groupBy + stepNumber;
-	}
-	query += ") AS s" + stepNumber + "\n";
-	return query;
-}
-
-/***********************  ORDERED FUNNELS **********************/
 
 function orderedFunnelQuery(params)
 {
 	var query = "";
-	// SELECT count(timestamp0), count(timestamp1), count(timestamp2)
 	query += "SELECT";
 	var hasGroupBy = false;
 	for (var i = 0; i < params.steps.length; i++) {
@@ -820,7 +663,6 @@ function orderedFunnelRollupSubquery(params) {
 
 function orderedFunnelSubquery(params, stepNumber) {
 	var query = "";
-	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
 	query += indent(params.steps.length-stepNumber+2) + "(SELECT ";
 	query += params.joinColumn + "0";
 	for (var i = 0; i < stepNumber; i++) {
@@ -854,12 +696,6 @@ function orderedFunnelSubquery(params, stepNumber) {
 	return query;
 }
 
-/* 
-(SELECT userKey AS userKey0, MIN(timestamp) AS timestamp0 
-FROM [events.eventlog]
-WHERE eventName = "a"
-GROUP EACH BY userKey0) AS s0
-*/
 function orderedFilterTableSubquery(params, stepNumber) {
 	var query = "";
 	var step = params.steps[stepNumber];
