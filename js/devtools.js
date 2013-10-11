@@ -545,7 +545,7 @@ function funnelQueryFromString(string)
 
 	for (var i = 1; i < lines.length; i++) {
 		var lineParams = lines[i].split(" ");
-		if (lineParams.length == 1) {
+		if (lineParams.length === 1) {
 			params[lineParams[0]] = true;
 		} else if (lineParams.length >= 2) {
 			var param = lineParams[0];
@@ -561,7 +561,7 @@ function funnelQueryFromString(string)
 		var stepObject = {
 			name: stepParam[0]
 		};
-		if (stepParam.length == 2) {
+		if (stepParam.length === 2) {
 			stepObject.groupBy = stepParam[1];
 			params.hasGroupBy = true;
 		}
