@@ -532,6 +532,7 @@ steps eventName1,eventName2, ...
 - nameColumn is likely name
 - timestampColumn is likely timestamp
 - include a line "percents" if you want percentages
+- include a line "ordered" if you want percentages
  */
 function funnelQueryFromString(string)
 {
@@ -540,7 +541,8 @@ function funnelQueryFromString(string)
 				  "joinColumn":"sessionId", 
 				  "nameColumn":"name",
 				  "timestampColumn":"timestamp",
-				  "percents":false};
+				  "percents":false,
+				  "ordered":false};
 
 	for (var i = 1; i < lines.length; i++) {
 		var lineParams = lines[i].split(" ");
@@ -566,7 +568,12 @@ function funnelQueryFromString(string)
 		steps.push(stepObject);
 	}
 	params["steps"] = steps;
-	var query = funnelQuery(params);
+	var query;
+	if (params["ordered"]) {
+		query = orderedFunnelQuery(params);
+	} else {
+		query = funnelQuery(params);
+	}
 	query = addCommentedTemplate(lines,query);
 	return query;
 }
@@ -730,3 +737,148 @@ function filterTableSubquery(params, stepNumber) {
 	query += ") AS s" + stepNumber + "\n";
 	return query;
 }
+
+/***********************  ORDERED FUNNELS **********************/
+
+function orderedFunnelQuery(params)
+{
+	var query = "";
+	// SELECT count(timestamp0), count(timestamp1), count(timestamp2)
+	query += "SELECT";
+	var hasGroupBy = false;
+	for (var i = 0; i < params.steps.length; i++) {
+		if (params.steps[i].groupBy) {
+			query += " " + params.steps[i].groupBy + i + ",";	
+			hasGroupBy = true;		
+		}
+	}
+	if (!hasGroupBy) {
+		query += ' "funnel" AS funnel,';
+	}
+	for (var i = 0; i < params.steps.length; i++) {
+		query += " COUNT(min_timestamp" + i + ") AS " + params.steps[i].name + "_" + i;
+		if (i === params.steps.length - 1 && (!params.percents || i === 0)) {
+			query += "\n";
+		} else {
+			query += ",";
+		}
+		if (params.percents && i > 0) {
+			query += " 100*COUNT(min_timestamp" + i + ")/COUNT(min_timestamp" + (i-1) + ") AS " + params.steps[i].name + "_percent_" + i;
+			if (i === params.steps.length - 1) {
+				query += "\n";
+			} else {
+				query += ",";
+			}
+		}
+	}
+	query += "FROM\n";
+	query += orderedFunnelRollupSubquery(params);
+	if (hasGroupBy) {
+		query += "GROUP EACH BY ";
+		var numGroupBys = 0;
+		for (var i = 0; i < params.steps.length; i++) {
+			if (params.steps[i].groupBy) {
+				if (numGroupBys > 0) {
+					query += ", ";
+				}
+				query += params.steps[i].groupBy + i;	
+				numGroupBys++;
+			}
+		}
+		query += "\n";	
+	}
+	return query;	
+}
+
+function orderedFunnelRollupSubquery(params) {
+	var query = "";
+	query += "(SELECT ";
+	query += params.joinColumn + '0';
+	for (var i = 0; i < params.steps.length; i++) {
+		query += ", MIN(timestamp" + i + ") AS min_timestamp" + i;
+		if (params.steps[i].groupBy) {
+			query += ", " + params.steps[i].groupBy + i;			
+		}
+	}	
+	query += "\n";
+	query += indent(1) + "FROM\n";	
+	query += orderedFunnelSubquery(params, params.steps.length-1);
+	query += "GROUP EACH BY " + params.joinColumn + '0';
+	var numGroupBys = 0;
+	for (var i = 0; i < params.steps.length; i++) {
+		if (params.steps[i].groupBy) {
+			if (numGroupBys > 0) {
+				query += ", ";
+			}
+			query += params.steps[i].groupBy + i;	
+			numGroupBys++;
+		}
+	}
+	query += ")\n";
+	return query;
+}
+
+function orderedFunnelSubquery(params, stepNumber) {
+	var query = "";
+	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
+	query += indent(stepNumber+2) + "(SELECT ";
+	query += params.joinColumn + "0";
+	for (var i = 0; i <= stepNumber; i++) {
+		query += ", timestamp" + i;
+		if (params.steps[i].groupBy) {
+			query += ", " + params.steps[i].groupBy + i;			
+		}
+	}
+	query += "\n";
+	query += indent(stepNumber+3) + "FROM\n";
+	var tableAlias;
+	if (stepNumber === 1) {
+		// base case
+		query += orderedFilterTableSubquery(params, stepNumber-1);
+		tableAlias = "s" + (stepNumber-1);
+	} else {
+		// recurse
+		query += orderedFunnelSubquery(params, stepNumber-1);
+		tableAlias = "t" + (stepNumber-1);
+	}
+
+	query += indent(stepNumber+3) + "LEFT JOIN EACH\n";
+	query += orderedFilterTableSubquery(params, stepNumber);
+
+	query += indent(stepNumber+3) + "ON " + tableAlias + "." + params.joinColumn + "0" + " = " + "s" + stepNumber + "." + params.joinColumn + stepNumber + "\n";
+	query += indent(stepNumber+3) + "WHERE (timestamp" + stepNumber + " IS NULL) OR (timestamp" + (stepNumber-1) + " < timestamp" + stepNumber + ")\n"; 
+	query += indent(stepNumber+2) + ") AS t" + stepNumber + "\n";
+	return query;
+}
+
+/* 
+(SELECT userKey AS userKey0, MIN(timestamp) AS timestamp0 
+FROM [events.eventlog]
+WHERE eventName = "a"
+GROUP EACH BY userKey0) AS s0
+*/
+function orderedFilterTableSubquery(params, stepNumber) {
+	var query = "";
+	var step = params.steps[stepNumber];
+	query += indent(stepNumber+3) + "(SELECT " + params.joinColumn + " AS " + params.joinColumn + stepNumber;
+	// query += ", MIN(" + params.timestampColumn + ") AS timestamp" + stepNumber;
+	query += ", " + params.timestampColumn + " AS timestamp" + stepNumber;
+	if (step.groupBy) {
+		query += ", " + step.groupBy + " AS " + step.groupBy + stepNumber;
+	}
+	query += "\n";
+	query += indent(stepNumber+4) + "FROM " + params.table + " \n";
+	query += indent(stepNumber+4) + 'WHERE ' + params.nameColumn + ' = "' + step.name + '"\n';
+	// query += indent(stepNumber+3) + "GROUP EACH BY " + params.joinColumn + stepNumber;
+	if (step.groupBy) {
+		query += ", " + step.groupBy + stepNumber;
+	}
+	query += indent(stepNumber+3) + ") AS s" + stepNumber + "\n";
+	return query;
+}
+
+
+
+
+
+
