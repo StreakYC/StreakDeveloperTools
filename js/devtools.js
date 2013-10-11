@@ -540,6 +540,7 @@ function funnelQueryFromString(string)
 				  "joinColumn":"sessionId", 
 				  "nameColumn":"name",
 				  "timestampColumn":"timestamp",
+				  "hasGroupBy":false,
 				  "percents":false};
 
 	for (var i = 1; i < lines.length; i++) {
@@ -562,6 +563,7 @@ function funnelQueryFromString(string)
 		};
 		if (stepParam.length == 2) {
 			stepObject.groupBy = stepParam[1];
+			params.hasGroupBy = true;
 		}
 		steps.push(stepObject);
 	}
@@ -588,14 +590,12 @@ function orderedFunnelQuery(params)
 {
 	var query = "";
 	query += "SELECT";
-	var hasGroupBy = false;
 	for (var i = 0; i < params.steps.length; i++) {
 		if (params.steps[i].groupBy) {
 			query += " " + params.steps[i].groupBy + i + ",";	
-			hasGroupBy = true;		
 		}
 	}
-	if (!hasGroupBy) {
+	if (!params.hasGroupBy) {
 		query += ' "funnel" AS funnel,';
 	}
 	for (var i = 0; i < params.steps.length; i++) {
@@ -616,7 +616,7 @@ function orderedFunnelQuery(params)
 	}
 	query += "FROM\n";
 	query += orderedFunnelRollupSubquery(params);
-	if (hasGroupBy) {
+	if (params.hasGroupBy) {
 		query += "GROUP EACH BY ";
 		var numGroupBys = 0;
 		for (var i = 0; i < params.steps.length; i++) {
@@ -647,14 +647,9 @@ function orderedFunnelRollupSubquery(params) {
 	query += indent(1) + "FROM\n";	
 	query += orderedFunnelSubquery(params, params.steps.length-1);
 	query += " GROUP EACH BY " + params.joinColumn + '0';
-	var numGroupBys = 0;
 	for (var i = 0; i < params.steps.length; i++) {
 		if (params.steps[i].groupBy) {
-			if (numGroupBys > 0) {
-				query += ", ";
-			}
-			query += params.steps[i].groupBy + i;	
-			numGroupBys++;
+			query += ", " + params.steps[i].groupBy + i;	
 		}
 	}
 	query += ")\n";
@@ -706,10 +701,6 @@ function orderedFilterTableSubquery(params, stepNumber) {
 	}
 	query += " FROM " + params.table;
 	query += ' WHERE ' + params.nameColumn + ' = "' + step.name + '"';
-	if (step.groupBy) {
-	    query += " GROUP EACH BY " + params.joinColumn + stepNumber;		
-		query += ", " + step.groupBy + stepNumber;
-	}
 	query += ") AS s" + stepNumber + "\n";
 	return query;
 }
