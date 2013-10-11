@@ -822,11 +822,8 @@ function orderedFunnelSubquery(params, stepNumber) {
 	var query = "";
 	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
 	query += indent(stepNumber+2) + "(SELECT ";
+	query += params.joinColumn + "0";
 	for (var i = 0; i <= stepNumber; i++) {
-		if (i > 0) {
-			query += ", ";
-		}
-		query += params.joinColumn + i;
 		query += ", timestamp" + i;
 		if (params.steps[i].groupBy) {
 			query += ", " + params.steps[i].groupBy + i;			
@@ -848,8 +845,7 @@ function orderedFunnelSubquery(params, stepNumber) {
 	query += indent(stepNumber+3) + "LEFT JOIN EACH\n";
 	query += orderedFilterTableSubquery(params, stepNumber);
 
-	query += indent(stepNumber+3) + "ON " + tableAlias + "." + params.joinColumn + (stepNumber - 1) + " = " + "s" + stepNumber + "." + params.joinColumn + stepNumber + "\n";
-	query += indent(stepNumber+3) + "WHERE (timestamp" + stepNumber + " IS NULL) OR (timestamp" + (stepNumber-1) + " < timestamp" + stepNumber + ")\n"; 
+	query += indent(stepNumber+3) + "ON " + tableAlias + "." + params.joinColumn + "0" + " = " + "s" + stepNumber + "." + params.joinColumn + stepNumber + "\n";
 	query += indent(stepNumber+2) + ") AS t" + stepNumber + "\n";
 	return query;
 }
@@ -864,24 +860,16 @@ function orderedFilterTableSubquery(params, stepNumber) {
 	var query = "";
 	var step = params.steps[stepNumber];
 	query += indent(stepNumber+3) + "(SELECT " + params.joinColumn + " AS " + params.joinColumn + stepNumber;
-	// query += ", MIN(" + params.timestampColumn + ") AS timestamp" + stepNumber;
 	query += ", " + params.timestampColumn + " AS timestamp" + stepNumber;
 	if (step.groupBy) {
 		query += ", " + step.groupBy + " AS " + step.groupBy + stepNumber;
 	}
-	query += "\n";
-	query += indent(stepNumber+4) + "FROM " + params.table + " \n";
-	query += indent(stepNumber+4) + 'WHERE ' + params.nameColumn + ' = "' + step.name + '"\n';
-	// query += indent(stepNumber+3) + "GROUP EACH BY " + params.joinColumn + stepNumber;
+	query += " FROM " + params.table;
+	query += ' WHERE ' + params.nameColumn + ' = "' + step.name + '"';
 	if (step.groupBy) {
+	    query += " GROUP EACH BY " + params.joinColumn + stepNumber;		
 		query += ", " + step.groupBy + stepNumber;
 	}
-	query += indent(stepNumber+3) + ") AS s" + stepNumber + "\n";
+	query += ") AS s" + stepNumber + "\n";
 	return query;
 }
-
-
-
-
-
-
