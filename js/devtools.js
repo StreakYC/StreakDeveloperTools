@@ -823,11 +823,15 @@ function orderedFunnelSubquery(params, stepNumber) {
 	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
 	query += indent(stepNumber+2) + "(SELECT ";
 	query += params.joinColumn + "0";
-	for (var i = 0; i <= stepNumber; i++) {
+	for (var i = 0; i < stepNumber; i++) {
 		query += ", timestamp" + i;
 		if (params.steps[i].groupBy) {
 			query += ", " + params.steps[i].groupBy + i;			
 		}
+	}
+	query += ", IF(timestamp" + (stepNumber - 1) + " < timestamp" + stepNumber + ", timestamp" + stepNumber + ", null) AS timestamp" + stepNumber;
+	if (params.steps[stepNumber].groupBy) {		
+		query += ", IF(timestamp" + (stepNumber - 1) + " < timestamp" + stepNumber + ", " + params.steps[i].groupBy + stepNumber + ", null) AS " + params.steps[i].groupBy + stepNumber;		
 	}
 	query += "\n";
 	query += indent(stepNumber+3) + "FROM\n";
