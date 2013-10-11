@@ -532,7 +532,7 @@ steps eventName1,eventName2, ...
 - nameColumn is likely name
 - timestampColumn is likely timestamp
 - include a line "percents" if you want percentages
-- include a line "ordered" if you want percentages
+- include a line "unordered" if you want an unordered funnel
  */
 function funnelQueryFromString(string)
 {
@@ -542,7 +542,7 @@ function funnelQueryFromString(string)
 				  "nameColumn":"name",
 				  "timestampColumn":"timestamp",
 				  "percents":false,
-				  "ordered":false};
+				  "unordered":false};
 
 	for (var i = 1; i < lines.length; i++) {
 		var lineParams = lines[i].split(" ");
@@ -569,10 +569,10 @@ function funnelQueryFromString(string)
 	}
 	params["steps"] = steps;
 	var query;
-	if (params["ordered"]) {
-		query = orderedFunnelQuery(params);
+	if (params["unordered"]) {
+		query = funnelQuery(params);		
 	} else {
-		query = funnelQuery(params);
+		query = orderedFunnelQuery(params);
 	}
 	query = addCommentedTemplate(lines,query);
 	return query;
@@ -792,7 +792,7 @@ function orderedFunnelQuery(params)
 
 function orderedFunnelRollupSubquery(params) {
 	var query = "";
-	query += "(SELECT ";
+	query += " (SELECT ";
 	query += params.joinColumn + '0';
 	for (var i = 0; i < params.steps.length; i++) {
 		query += ", MIN(timestamp" + i + ") AS min_timestamp" + i;
@@ -803,7 +803,7 @@ function orderedFunnelRollupSubquery(params) {
 	query += "\n";
 	query += indent(1) + "FROM\n";	
 	query += orderedFunnelSubquery(params, params.steps.length-1);
-	query += "GROUP EACH BY " + params.joinColumn + '0';
+	query += " GROUP EACH BY " + params.joinColumn + '0';
 	var numGroupBys = 0;
 	for (var i = 0; i < params.steps.length; i++) {
 		if (params.steps[i].groupBy) {
@@ -821,7 +821,7 @@ function orderedFunnelRollupSubquery(params) {
 function orderedFunnelSubquery(params, stepNumber) {
 	var query = "";
 	// 	(SELECT userKey0, timestamp0, timestamp1, timestamp2
-	query += indent(stepNumber+2) + "(SELECT ";
+	query += indent(params.steps.length-stepNumber+2) + "(SELECT ";
 	query += params.joinColumn + "0";
 	for (var i = 0; i < stepNumber; i++) {
 		query += ", timestamp" + i;
@@ -834,7 +834,7 @@ function orderedFunnelSubquery(params, stepNumber) {
 		query += ", IF(timestamp" + (stepNumber - 1) + " < timestamp" + stepNumber + ", " + params.steps[i].groupBy + stepNumber + ", null) AS " + params.steps[i].groupBy + stepNumber;		
 	}
 	query += "\n";
-	query += indent(stepNumber+3) + "FROM\n";
+	query += indent(params.steps.length-stepNumber+3) + "FROM\n";
 	var tableAlias;
 	if (stepNumber === 1) {
 		// base case
@@ -846,11 +846,11 @@ function orderedFunnelSubquery(params, stepNumber) {
 		tableAlias = "t" + (stepNumber-1);
 	}
 
-	query += indent(stepNumber+3) + "LEFT JOIN EACH\n";
+	query += indent(params.steps.length-stepNumber+3) + "LEFT JOIN EACH\n";
 	query += orderedFilterTableSubquery(params, stepNumber);
 
-	query += indent(stepNumber+3) + "ON " + tableAlias + "." + params.joinColumn + "0" + " = " + "s" + stepNumber + "." + params.joinColumn + stepNumber + "\n";
-	query += indent(stepNumber+2) + ") AS t" + stepNumber + "\n";
+	query += indent(params.steps.length-stepNumber+3) + "ON " + tableAlias + "." + params.joinColumn + "0" + " = " + "s" + stepNumber + "." + params.joinColumn + stepNumber + "\n";
+	query += indent(params.steps.length-stepNumber+2) + ") AS t" + stepNumber + "\n";
 	return query;
 }
 
@@ -863,7 +863,7 @@ GROUP EACH BY userKey0) AS s0
 function orderedFilterTableSubquery(params, stepNumber) {
 	var query = "";
 	var step = params.steps[stepNumber];
-	query += indent(stepNumber+3) + "(SELECT " + params.joinColumn + " AS " + params.joinColumn + stepNumber;
+	query += indent(params.steps.length-stepNumber+3) + "(SELECT " + params.joinColumn + " AS " + params.joinColumn + stepNumber;
 	query += ", " + params.timestampColumn + " AS timestamp" + stepNumber;
 	if (step.groupBy) {
 		query += ", " + step.groupBy + " AS " + step.groupBy + stepNumber;
