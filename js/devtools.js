@@ -403,12 +403,12 @@ function attachEventHandlerToDataSetRow(dataSetRow) {
 
 function runQuery(query) {
 	fillInQuery(query);
-	clickButton($("#query-run"));
+	clickButton($($('.nav-link .nav-text')[0]));
 };
 
 function fillInQuery(query) {
 	
-	clickButton($("#query-history-button"));
+	clickButton($($('.nav-link .nav-text')[0]));
 	setTimeout(function() {
 		var savedQueries = $('.queries-table-content');
 
