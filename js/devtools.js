@@ -51,7 +51,7 @@ $(document).ready(function() {
 					else if (matches[2] == "KB") {
 						gb = gb/(1024*1024);
 					}
-					var costInCents = Math.round(3.5*gb*10)/10;
+					var costInCents = Math.round(0.5*gb*10)/10;
 					queryStatus.html(text.substring(0, text.length-1) + ', <strong>Cost: ' + costInCents + '&cent;</strong>)');
 				}
 			}
