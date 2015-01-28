@@ -29,10 +29,10 @@ $(document).ready(function() {
 				expandTemplateButton.insertBefore(saveQueryButton);
 			}
 		}
-		
+
 		// add show graph button
 		addGraphButtonsToPage();
-		
+
 		// add cost indicator to query results
 		var queryStatus = $("#query-status");
 		if (queryStatus.size() > 0) {
@@ -56,51 +56,51 @@ $(document).ready(function() {
 				}
 			}
 		}
-		
+
 		// make results rows clickable to expand
 		var resultTable = $('#result-table');
 		if(resultTable.size() > 0){
 		      var lower = new Date('01-01-1990');
 		      var upper = new Date('01-01-2100');
-		      
+
 	          resultTable.find('tr.records-row td').each(function(tdI, td){
 	               var ts = td.innerHTML;
-	               
+
 	               if(parseInt(ts) > 0){
 	                   var d = new Date();
 	                   d.setTime(parseInt(ts)/1000);
 	                   if(d > lower && d < upper){
-	                	   td.innerHTML = d.toLocaleString().replace(/\sGMT\S*/, '');  
-	                   }	                   
+	                	   td.innerHTML = d.toLocaleString().replace(/\sGMT\S*/, '');
+	                   }
 	               }
 	           });
 		}
-		
+
 		// make sure the page is scrollable
 		removeHeightFromRecords();
-		
+
 		// refresh dataset queries
 		refreshDatasetQueries();
-		
+
 		// add handler item to dataset menus to query entire dataset
 		var datasets = $('.tables-dataset-row');
 		for (var i = 0; i < datasets.length; i++) {
 			attachEventHandlerToDataSetRow($(datasets[i]));
 		}
-		
+
 		// add menu item to query data set
 		addQueryDatasetMenuItem();
-		
+
 		// add 'add all' row to schema table
 		addAddAllRow();
-		
+
 	}, 500);
-	
-	setInterval(function() {		
+
+	setInterval(function() {
 		$(".row-number").css("background-color", "#F9EDBE");
-		
+
 		$(".records-cell").css("max-width", "1000px").css("overflow", "hidden");
-		
+
 		$(".row-number").off();
 		$(".row-number").click(function(e){
 			var rowNum = $(e.target);
@@ -111,7 +111,7 @@ $(document).ready(function() {
 			if (hidden) {
 				rowNum.parent().find(".records-cell").each(function(index) {
 					$(this).html("<pre style=\"overflow:auto\">" + $(this).html() + "</pre>");
-				});	
+				});
 			}
 			else {
 				rowNum.parent().find(".records-cell").each(function(index) {
@@ -120,7 +120,7 @@ $(document).ready(function() {
 			}
 		});
 
-	},1000);	
+	},1000);
 });
 
 function hideGraph() {
@@ -189,7 +189,7 @@ function addEventHandlersToGraphButtons() {
 
 function addHoverToGraphButtons() {
 	var buttons = [timeseriesGraphButton, columnXYGraphButton, hideGraphButton];
-	
+
 	$.each(buttons, function(i, button) {
 		button.hover(function() {
 			button.toggleClass('jfk-button-hover');
@@ -268,10 +268,10 @@ function getDataArrayFromResults(chartType) {
 			var col = $(cols[j]);
 			if (j == 0) {
 				if (chartType == 'timeseries') {
-					rowArray.push(Date.parse(col.text()));	
+					rowArray.push(Date.parse(col.text()));
 				}
 				else if (chartType == 'columnXY') {
-					rowArray.push(col.text());	
+					rowArray.push(col.text());
 				}
 			}
 			else {
@@ -281,7 +281,7 @@ function getDataArrayFromResults(chartType) {
 				else {
 					rowArray.push(0);
 				}
-				
+
 			}
 		}
 		retVal.push(rowArray);
@@ -324,8 +324,8 @@ function addAddAllRow() {
 				toInsert += rows.slice(i, i+1).find('.schema-table-field').text() + ', ';
 			}
 			toInsert = toInsert.substring(0, toInsert.length-2);
-			
-			var schemaTableField = firstRow.find('.schema-table-field'); 
+
+			var schemaTableField = firstRow.find('.schema-table-field');
 			schemaTableField.text(toInsert);
 			clickButton(schemaTableField);
 			schemaTableField.text(old);
@@ -407,7 +407,7 @@ function runQuery(query) {
 };
 
 function fillInQuery(query) {
-	
+
 	clickButton($($('.nav-link .nav-text')[0]));
 	setTimeout(function() {
 		var savedQueries = $('.queries-table-content');
@@ -425,7 +425,7 @@ function fillInQuery(query) {
 			clickButton(savedQueries.last());
 
 			savedQueries.last().attr('data-sql', oldDataSql);
-			savedQueries.last().attr('data-id', oldDataId);		
+			savedQueries.last().attr('data-id', oldDataId);
 		}
 	},500);
 };
@@ -435,13 +435,13 @@ function getQueryBoxContents() {
 	if (preTags.size() == 0) {
 		return "";
 	}
-	
+
 	var retVal = "";
 	preTags.each( function(index, element) {
 		retVal += $(this).text() + "\n";
 	});
 	retVal = retVal.trim();
-	
+
 	return retVal;
 };
 
@@ -502,13 +502,13 @@ function clickButton(sb) {
 	var evt = document.createEvent("MouseEvents");
 	evt.initMouseEvent("mousedown", true, true, window,
 	    0, pos.left, pos.top, 0, 0, false, false, false, false, 0, null);
-	sb[0].dispatchEvent(evt);	
-	
+	sb[0].dispatchEvent(evt);
+
 	evt = document.createEvent("MouseEvents");
 	evt.initMouseEvent("mouseup", true, true, window,
 	    0, pos.left, pos.top, 0, 0, false, false, false, false, 0, null);
 	sb[0].dispatchEvent(evt);
-	
+
 	evt = document.createEvent("MouseEvents");
 	evt.initMouseEvent("click", true, true, window,
 	    0, pos.left, pos.top, 0, 0, false, false, false, false, 0, null);
@@ -539,7 +539,7 @@ function funnelQueryFromString(string)
 {
 	var lines = string.match(/[^\r\n]+/g);  // break apart by line
 	var params = {"table":"[events.prod]",
-				  "joinColumn":"sessionId", 
+				  "joinColumn":"sessionId",
 				  "nameColumn":"name",
 				  "timestampColumn":"timestamp",
 				  "hasGroupBy":false,
@@ -594,7 +594,7 @@ function orderedFunnelQuery(params)
 	query += "SELECT";
 	for (var i = 0; i < params.steps.length; i++) {
 		if (params.steps[i].groupBy) {
-			query += " " + params.steps[i].groupBy + i + ",";	
+			query += " " + params.steps[i].groupBy + i + ",";
 		}
 	}
 	if (!params.hasGroupBy) {
@@ -626,13 +626,13 @@ function orderedFunnelQuery(params)
 				if (numGroupBys > 0) {
 					query += ", ";
 				}
-				query += params.steps[i].groupBy + i;	
+				query += params.steps[i].groupBy + i;
 				numGroupBys++;
 			}
 		}
-		query += "\n";	
+		query += "\n";
 	}
-	return query;	
+	return query;
 }
 
 function orderedFunnelRollupSubquery(params) {
@@ -642,16 +642,16 @@ function orderedFunnelRollupSubquery(params) {
 	for (var i = 0; i < params.steps.length; i++) {
 		query += ", MIN(timestamp" + i + ") AS min_timestamp" + i;
 		if (params.steps[i].groupBy) {
-			query += ", " + params.steps[i].groupBy + i;			
+			query += ", " + params.steps[i].groupBy + i;
 		}
-	}	
+	}
 	query += "\n";
-	query += indent(1) + "FROM\n";	
+	query += indent(1) + "FROM\n";
 	query += orderedFunnelSubquery(params, params.steps.length-1);
 	query += " GROUP EACH BY " + params.joinColumn + '0';
 	for (var i = 0; i < params.steps.length; i++) {
 		if (params.steps[i].groupBy) {
-			query += ", " + params.steps[i].groupBy + i;	
+			query += ", " + params.steps[i].groupBy + i;
 		}
 	}
 	query += ")\n";
@@ -665,12 +665,12 @@ function orderedFunnelSubquery(params, stepNumber) {
 	for (var i = 0; i < stepNumber; i++) {
 		query += ", timestamp" + i;
 		if (params.steps[i].groupBy) {
-			query += ", " + params.steps[i].groupBy + i;			
+			query += ", " + params.steps[i].groupBy + i;
 		}
 	}
 	query += ", IF(timestamp" + (stepNumber - 1) + " < timestamp" + stepNumber + ", timestamp" + stepNumber + ", null) AS timestamp" + stepNumber;
-	if (params.steps[stepNumber].groupBy) {		
-		query += ", IF(timestamp" + (stepNumber - 1) + " < timestamp" + stepNumber + ", " + params.steps[i].groupBy + stepNumber + ", null) AS " + params.steps[i].groupBy + stepNumber;		
+	if (params.steps[stepNumber].groupBy) {
+		query += ", IF(timestamp" + (stepNumber - 1) + " < timestamp" + stepNumber + ", " + params.steps[i].groupBy + stepNumber + ", null) AS " + params.steps[i].groupBy + stepNumber;
 	}
 	query += "\n";
 	query += indent(params.steps.length-stepNumber+3) + "FROM\n";
