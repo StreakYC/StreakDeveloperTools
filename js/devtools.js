@@ -110,7 +110,14 @@ $(document).ready(function() {
 			}
 			if (hidden) {
 				rowNum.parent().find(".records-cell").each(function(index) {
-					$(this).html("<pre style=\"overflow:auto\">" + $(this).html() + "</pre>");
+					try{
+						var newText = JSON.stringify(JSON.parse($(this).html()), null, 2);
+						$(this).html("<pre style=\"overflow:auto\">" + newText + "</pre>");
+    			}
+					catch(e) {
+						$(this).html("<pre style=\"overflow:auto\">" + $(this).html() + "</pre>");
+    			}
+
 				});
 			}
 			else {
