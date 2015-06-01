@@ -112,7 +112,8 @@ $(document).ready(function() {
 				rowNum.parent().find(".records-cell").each(function(index) {
 					try{
 						var newText = JSON.stringify(JSON.parse($(this).html()), null, 2);
-						$(this).html("<pre style=\"overflow:auto\">" + newText + "</pre>");
+						$(this).html("<pre style=\"overflow:auto\">");
+						$(this).children().text(newText);
     			}
 					catch(e) {
 						$(this).html("<pre style=\"overflow:auto\">" + $(this).html() + "</pre>");
