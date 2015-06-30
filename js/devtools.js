@@ -138,12 +138,12 @@ function hideGraph() {
 }
 
 function addGraphButtonsToPage() {
-	var downloadButton = $('#download');
-	if (downloadButton.size() != 0) {
-		if (downloadButton.parent().find('#showGraphsDiv').size() == 0) {
+	var downloadButton = $('#csv-download');
+	if (downloadButton.size() !== 0) {
+		if (downloadButton.parent().find('#showGraphsDiv').size() === 0) {
 			showGraphsDiv.insertBefore(downloadButton);
 		}
-		if (downloadButton.parent().find('#hideGraphButton').size() == 0) {
+		if (downloadButton.parent().find('#hideGraphButton').size() === 0) {
 			hideGraphButton.insertBefore(downloadButton);
 		}
 	}
@@ -159,8 +159,8 @@ function showGraph(chartType) {
 	var iframe = $('<iframe id="chart"></iframe>');
 	iframe.attr('src', uri);
 	iframe.css('width', '100%');
-	iframe.css('height', '300px')
-	$('#content-panel-main .content-header').parent().prepend(iframe)
+	iframe.css('height', '300px');
+	$('#content-panel-main .content-header').parent().prepend(iframe);
 
 	showGraphsDiv.hide();
 	hideGraphButton.show();
@@ -179,7 +179,7 @@ function createGraphButtons() {
 	addEventHandlersToGraphButtons();
 
 	hideGraphButton.hide();
-};
+}
 
 function addEventHandlersToGraphButtons() {
 	timeseriesGraphButton.click(function() {
@@ -340,7 +340,7 @@ function addAddAllRow() {
 		});
 		tableBody.append(clone);
 	}
-};
+}
 
 function addQueryDatasetMenuItem() {
 	var menu = $($('.goog-menu-vertical')[1]);
@@ -436,7 +436,7 @@ function fillInQuery(query) {
 			savedQueries.last().attr('data-id', oldDataId);
 		}
 	},500);
-};
+}
 
 function getQueryBoxContents() {
 	var preTags = $(".CodeMirror-lines").children().first().children().last().children();
@@ -451,7 +451,7 @@ function getQueryBoxContents() {
 	retVal = retVal.trim();
 
 	return retVal;
-};
+}
 
 function normalizeTitle(title) {
 	title = title.trim();
@@ -459,12 +459,12 @@ function normalizeTitle(title) {
 		title = title.substring(0, title.length-1);
 	}
 	return title;
-};
+}
 
 function createTemplateExpansionButton() {
 	expandTemplateButton = $("<div id=\"expand-query\" class=\"jfk-button jfk-button-standard goog-inline-block\" role=\"button\" style=\"-webkit-user-select: none;\" aria-disabled=\"false\" aria-label=\"foo\" data-tooltip=\"This will expand dataset:first/last toi the first or last table in the specified dataset.\" data-tooltip-align=\"b,c\" data-tooltip-delay=\"1000\" tabindex=\"0\">Expand Templates</div>");
 	expandTemplateButton.click(expandTemplatesInQueryPressed);
-};
+}
 
 
 function isOnLastResultPage() {
