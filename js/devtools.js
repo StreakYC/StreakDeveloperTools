@@ -30,38 +30,41 @@ $(document).ready(function() {
 			}
 			if (!queryStatus.hasClass("costAnnotated")) {
 				var text = queryStatus.html();
-				var matches = text.match(/(\d+\.?\d*) (MB|GB|KB) processed/);
-				if (matches != null && matches.length > 1) {
+				var matches = text.match(/(\d+\.?\d*) (TB|GB|MB|KB) processed/);
+				if (matches !== null && matches.length > 1) {
 					queryStatus.addClass("costAnnotated");
-					var gb = matches[1];
-					if (matches[2] == "MB") {
-						gb = gb/1024;
+					var tb = matches[1];
+					if (matches[2] == "GB") {
+						tb = tb/1024;
+					}
+					else if (matches[2] == "MB") {
+						tb = tb/1024^2;
 					}
 					else if (matches[2] == "KB") {
-						gb = gb/(1024*1024);
+						tb = tb/1024^3;
 					}
-					var costInCents = Math.round(0.5*gb*10)/10;
+					var costInCents = Math.round(5*tb*10)/10;
 					queryStatus.html(text.substring(0, text.length-1) + ', <strong>Cost: ' + costInCents + '&cent;</strong>)');
 				}
 			}
 		}
 
-		var resultTable = $('#result-table');
+		// parse dates
+		var resultTable = $('.records-table');
 		if(resultTable.size() > 0){
-		      var lower = new Date('01-01-1990');
-		      var upper = new Date('01-01-2100');
+      var lower = new Date('01-01-1990');
+      var upper = new Date('01-01-2100');
 
-	          resultTable.find('tr.records-row td').each(function(tdI, td){
-	               var ts = td.innerHTML;
-
-	               if(parseInt(ts) > 0){
-	                   var d = new Date();
-	                   d.setTime(parseInt(ts)/1000);
-	                   if(d > lower && d < upper){
-	                	   td.innerHTML = d.toLocaleString().replace(/\sGMT\S*/, '');
-	                   }
-	               }
-	           });
+      resultTable.find('tr.records-row td').each(function(tdI, td){
+         var ts = td.innerHTML;
+         if(parseInt(ts) > 0){
+          var d = new Date();
+          d.setTime(parseInt(ts)/1000);
+          if(d > lower && d < upper){
+        		td.innerHTML = d.toLocaleString().replace(/\sGMT\S*/, '');
+        	}
+       	}
+       });
 		}
 
 		// make sure the page is scrollable
@@ -82,16 +85,17 @@ $(document).ready(function() {
 				hidden = false;
 			}
 			if (hidden) {
+				var style = "overflow:auto; line-height:15px";
+				var preTag = "<pre style=\"" + style + "\">";
 				rowNum.parent().find(".records-cell").each(function(index) {
 					try{
 						var newText = JSON.stringify(JSON.parse($(this).html()), null, 2);
-						$(this).html("<pre style=\"overflow:auto\">");
+						$(this).html(preTag);
 						$(this).children().text(newText);
     			}
 					catch(e) {
-						$(this).html("<pre style=\"overflow:auto\">" + $(this).html() + "</pre>");
+						$(this).html(preTag + $(this).html() + "</pre>");
     			}
-
 				});
 			}
 			else {
@@ -111,14 +115,15 @@ function hideGraph() {
 }
 
 function addGraphButtonsToPage() {
-	var downloadButton = $('#csv-download');
-	if (downloadButton.size() !== 0) {
-		if (downloadButton.parent().find('#showGraphsDiv').size() === 0) {
-			showGraphsDiv.insertBefore(downloadButton);
-		}
-		if (downloadButton.parent().find('#hideGraphButton').size() === 0) {
-			hideGraphButton.insertBefore(downloadButton);
-		}
+	var actions = $('.content-actions');
+	if (actions.size() === 0 || actions.children().size() === 0) {
+		return;
+	}
+	if (actions.find('#showGraphsDiv').size() === 0) {
+		actions.prepend(showGraphsDiv);
+	}
+	if (actions.find('#hideGraphButton').size() === 0) {
+		actions.prepend(hideGraphButton);
 	}
 }
 
@@ -186,8 +191,8 @@ function getDataArrayFromResults(chartType) {
 
 	var headerCells = $('#result-table .records-header:not(.records-filler):not(:first-child)');
 	var header = [];
-	for (var i = 0; i < headerCells.length; i++) {
-		header.push($(headerCells[i]).text());
+	for (var k = 0; k < headerCells.length; k++) {
+		header.push($(headerCells[k]).text());
 	}
 	retVal.push(header);
 
@@ -198,7 +203,7 @@ function getDataArrayFromResults(chartType) {
 		var rowArray = [];
 		for (var j = 0; j < cols.length; j++) {
 			var col = $(cols[j]);
-			if (j == 0) {
+			if (j === 0) {
 				if (chartType == 'timeseries') {
 					rowArray.push(Date.parse(col.text()));
 				}
