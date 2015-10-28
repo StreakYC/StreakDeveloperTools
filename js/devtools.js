@@ -188,18 +188,17 @@ function addHoverToGraphButtons() {
 
 function getDataArrayFromResults(chartType) {
 	var retVal = [];
-
-	var headerCells = $('#result-table .records-header:not(.records-filler):not(:first-child)');
+	var headerCells = $('.records-table thead td:not(.records-filler):not(:first-child)');
 	var header = [];
 	for (var k = 0; k < headerCells.length; k++) {
 		header.push($(headerCells[k]).text());
 	}
 	retVal.push(header);
 
-	var rows = $('#result-table .records-row');
+	var rows = $('.records-table .records-row');
 	for (var i = 0; i < rows.length; i++) {
 		var row = $(rows[i]);
-		var cols = row.find('.records-cell:not(.records-filler)');
+		var cols = row.find('td:not(.records-filler):not(:first-child)');
 		var rowArray = [];
 		for (var j = 0; j < cols.length; j++) {
 			var col = $(cols[j]);
