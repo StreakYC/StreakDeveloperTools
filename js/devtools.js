@@ -9,9 +9,10 @@ $(document).ready(function() {
 
 	var t = setInterval(function() {
 		// check if results exist
-		if ($('#body') && $('#main') && !hasResized) {
+		if ($('#body') && $('#outer-body') && $('#main') && !hasResized) {
 			hasResized = true;
 			$('#body').height(15000);
+			$('#outer-body').height(15000);
 			$("#main").attr("style", "overflow:auto");
 			var evt = document.createEvent('UIEvents');
 			evt.initUIEvent('resize', true, false,window,0);
