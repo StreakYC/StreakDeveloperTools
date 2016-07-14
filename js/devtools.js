@@ -39,12 +39,12 @@ $(document).ready(function() {
 						tb = tb/1024;
 					}
 					else if (matches[2] == "MB") {
-						tb = tb/1024^2;
+						tb = tb/(1024*1024);
 					}
 					else if (matches[2] == "KB") {
-						tb = tb/1024^3;
+						tb = tb/(1024*1024*1024);
 					}
-					var costInCents = Math.round(5*tb*10)/10;
+					var costInCents = Math.round(500*tb*100)/100;
 					queryStatus.html(text.substring(0, text.length-1) + ', <strong>Cost: ' + costInCents + '&cent;</strong>)');
 				}
 			}
