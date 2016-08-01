@@ -6,7 +6,7 @@ var hasResized = false;
 
 $(document).ready(function() {
 	createGraphButtons();
-
+	modifyAndKeepOpenValidatorBox();
 	var t = setInterval(function() {
 		// check if results exist
 		if ($('#body') && $('#outer-body') && $('#main') && !hasResized) {
@@ -17,7 +17,6 @@ $(document).ready(function() {
 			var evt = document.createEvent('UIEvents');
 			evt.initUIEvent('resize', true, false,window,0);
 			window.dispatchEvent(evt);
-
 		}
 
 		// add show graph button
@@ -31,20 +30,10 @@ $(document).ready(function() {
 			}
 			if (!queryStatus.hasClass("costAnnotated")) {
 				var text = queryStatus.html();
-				var matches = text.match(/(\d+\.?\d*) (TB|GB|MB|KB) processed/);
+				var matches = text.match(/(\d+\.?\d*) (TB|GB|MB|KB) (processed)/);
 				if (matches !== null && matches.length > 1) {
+					var costInCents = getCostInCentsFromDataSize(matches[1], matches[2]);
 					queryStatus.addClass("costAnnotated");
-					var tb = matches[1];
-					if (matches[2] == "GB") {
-						tb = tb/1024;
-					}
-					else if (matches[2] == "MB") {
-						tb = tb/(1024*1024);
-					}
-					else if (matches[2] == "KB") {
-						tb = tb/(1024*1024*1024);
-					}
-					var costInCents = Math.round(500*tb*100)/100;
 					queryStatus.html(text.substring(0, text.length-1) + ', <strong>Cost: ' + costInCents + '&cent;</strong>)');
 				}
 			}
@@ -108,6 +97,47 @@ $(document).ready(function() {
 
 	},1000);
 });
+
+var hasFoundStatusBox = false;
+function modifyAndKeepOpenValidatorBox() {
+	// make sure validator is always open
+	setInterval(function() {
+		if ($('.validate-status-box').length > 0) {
+				$('.validate-status-box').removeClass('ng-hide');
+				if (!hasFoundStatusBox) {
+						hasFoundStatusBox = true;
+						var statusBox = document.getElementsByClassName('query-validate-status-text')
+						var observer = new MutationObserver(function(mutations) {
+						  mutations.forEach(function(mutation) {
+								var text = $(statusBox).text();
+								var matches = text.match(/(\d+\.?\d*) (TB|GB|MB|KB) (when run)/);
+								if (matches !== null && matches.length > 1) {
+									var costInCents = getCostInCentsFromDataSize(matches[1], matches[2]);
+									$(statusBox).html(text.substring(0, text.length-1) + ', <strong>Cost: ' + costInCents + '&cent;</strong>');
+								}
+						  });
+						}).observe(statusBox[0], { subtree: true, characterData: true });;
+				}
+		}
+
+
+	}, 500);
+
+}
+
+function getCostInCentsFromDataSize(num, units) {
+	var tb = num;
+	if (units == "GB") {
+		tb = tb/1024;
+	}
+	else if (units == "MB") {
+		tb = tb/(1024*1024);
+	}
+	else if (units == "KB") {
+		tb = tb/(1024*1024*1024);
+	}
+	return Math.round(500*tb*100)/100;
+}
 
 function hideGraph() {
 	$('#chart').remove();
