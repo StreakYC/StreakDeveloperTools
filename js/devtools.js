@@ -113,7 +113,14 @@ function modifyAndKeepOpenValidatorBox() {
 								var matches = text.match(/(\d+\.?\d*) (TB|GB|MB|KB) (when run)/);
 								if (matches !== null && matches.length > 1) {
 									var costInCents = getCostInCentsFromDataSize(matches[1], matches[2]);
-									$(statusBox).html(text.substring(0, text.length-1) + ', <strong>Cost: ' + costInCents + '&cent;</strong>');
+									console.log(costInCents);
+									if ($('.streak-query-cost').length == 0) {
+											$(statusBox).parent().append('<span><strong class="streak-query-cost"></strong></span>')
+									}
+									$('.streak-query-cost').html('Cost: ' + costInCents + '&cent;');
+								}
+								else {
+									$('.streak-query-cost').html('');
 								}
 						  });
 						}).observe(statusBox[0], { subtree: true, characterData: true });;
