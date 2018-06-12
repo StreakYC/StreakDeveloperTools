@@ -8,6 +8,9 @@ $(document).ready(function() {
 	createGraphButtons();
 	modifyAndKeepOpenValidatorBox();
 	var t = setInterval(function() {
+		if (document.hidden) {
+			return
+		}
 		// check if results exist
 		if ($('#body') && $('#outer-body') && $('#main') && !hasResized) {
 			hasResized = true;
@@ -63,6 +66,9 @@ $(document).ready(function() {
 
 	// make results rows clickable to expand
 	setInterval(function() {
+		if (document.hidden) {
+			return
+		}
 		$(".row-number").css("background-color", "#F9EDBE");
 
 		$(".records-cell").css("max-width", "1000px").css("overflow", "hidden");
@@ -102,6 +108,9 @@ var hasFoundStatusBox = false;
 function modifyAndKeepOpenValidatorBox() {
 	// make sure validator is always open
 	setInterval(function() {
+		if (document.hidden) {
+			return
+		}
 		if ($('.validate-status-box').length > 0) {
 				$('.validate-status-box').removeClass('ng-hide');
 				if (!hasFoundStatusBox) {
